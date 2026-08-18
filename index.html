@@ -99,6 +99,29 @@
                     </div>
                 </div>
                 
+                <!-- Universal Embed Sync Bar (StreamHG / Proxy / Custom Embeds) -->
+                <div id="embed-sync-bar" class="embed-sync-bar" style="display: none;">
+                    <span class="embed-sync-title">StreamHG / Proxy Sync Controls:</span>
+                    <div class="embed-sync-btns">
+                        <button id="embed-play-btn" class="pill-control-btn active" title="Play for everyone in room">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                            <span>Play Room</span>
+                        </button>
+                        <button id="embed-pause-btn" class="pill-control-btn" title="Pause for everyone in room">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>
+                            <span>Pause Room</span>
+                        </button>
+                        <button id="embed-seek-back-btn" class="pill-control-btn secondary" title="Seek -10s for everyone">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 17l-5-5 5-5M18 17l-5-5 5-5"/></svg>
+                            <span>-10s</span>
+                        </button>
+                        <button id="embed-seek-fwd-btn" class="pill-control-btn secondary" title="Seek +10s for everyone">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 17l5-5-5-5M6 17l5-5-5-5"/></svg>
+                            <span>+10s</span>
+                        </button>
+                    </div>
+                </div>
+                
                 <!-- Media Action Bar -->
                 <div class="media-controls" id="media-controls">
                     <button id="toggle-camera-btn" class="pill-control-btn">
@@ -238,7 +261,7 @@
     <!-- Scripts -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.min.js"></script>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
-    <script src="script.js?v=15.0" defer></script>
-    <script src="webrtc.js?v=15.0" defer></script>
+    <script src="script.js?v=16.0" defer></script>
+    <script src="webrtc.js?v=16.0" defer></script>
 </body>
 </html>

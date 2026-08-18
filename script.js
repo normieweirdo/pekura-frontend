@@ -189,10 +189,66 @@ window.applyVideoSync = function(state, time) {
         } catch(e) {}
     }
 
+    // 2. Direct HTML5 <video> Element
+    const html5Video = document.querySelector('#player-container video');
+    if (html5Video) {
+        try {
+            if (Math.abs(html5Video.currentTime - time) > 0.3) {
+                html5Video.currentTime = time;
+            }
+            if (state === 'PLAYING') html5Video.play().catch(() => showSyncOverlay());
+            else if (state === 'PAUSED') html5Video.pause();
+        } catch(e) {}
+    }
+
+    // 3. Generic iFrame Embeds (StreamHG, Proxy.php)
+    sendIframeCommand(state === 'PLAYING' ? 'play' : 'pause');
+    if (state === 'PLAYING') sendIframeCommand('playVideo');
+    else if (state === 'PAUSED') sendIframeCommand('pauseVideo');
+
     setTimeout(() => {
         isApplyingRemoteSync = false;
     }, 500);
 };
+
+// Universal Iframe postMessage Relay (for StreamHG, Proxy.php, Vidplay, JWPlayer)
+function sendIframeCommand(command, arg) {
+    const iframe = document.querySelector('#player-container iframe');
+    if (!iframe || !iframe.contentWindow) return;
+
+    const messages = [
+        { event: 'command', func: command, args: arg !== undefined ? [arg] : [] },
+        { method: command, value: arg },
+        { type: command, data: arg },
+        { action: command, value: arg },
+        command
+    ];
+
+    messages.forEach(msg => {
+        try {
+            iframe.contentWindow.postMessage(typeof msg === 'object' ? JSON.stringify(msg) : msg, '*');
+            iframe.contentWindow.postMessage(msg, '*');
+        } catch(e) {}
+    });
+}
+
+// Cross-origin iframe postMessage Listener
+window.addEventListener('message', (event) => {
+    if (isApplyingRemoteSync) return;
+    try {
+        let data = event.data;
+        if (typeof data === 'string') {
+            try { data = JSON.parse(data); } catch(e) {}
+        }
+        if (!data) return;
+
+        if (data.event === 'play' || data.event === 'playing' || data.type === 'play' || data === 'playing') {
+            if (window.broadcastSync) window.broadcastSync('PLAYING', data.currentTime || 0);
+        } else if (data.event === 'pause' || data.type === 'pause' || data === 'paused') {
+            if (window.broadcastSync) window.broadcastSync('PAUSED', data.currentTime || 0);
+        }
+    } catch(e) {}
+});
 
 // High-precision Seek Forward & Backward Detector (polls every 250ms)
 let lastCheckedTime = 0;
@@ -235,8 +291,10 @@ function extractVideoID(url) {
 window.loadVideo = function(url) {
     const videoId = extractVideoID(url);
     const wrapper = document.getElementById('player-container');
+    const embedSyncBar = document.getElementById('embed-sync-bar');
     
     if (videoId) {
+        if (embedSyncBar) embedSyncBar.style.display = 'none';
         if (player && typeof player.destroy === 'function') {
             player.destroy();
         }
@@ -247,17 +305,85 @@ window.loadVideo = function(url) {
             player = null;
         }
         wrapper.innerHTML = '';
-        const iframe = document.createElement('iframe');
-        iframe.src = url;
-        iframe.style.width = '100%';
-        iframe.style.height = '100%';
-        iframe.frameBorder = '0';
-        iframe.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-forms allow-presentation allow-popups allow-popups-to-escape-sandbox');
-        iframe.setAttribute('allowfullscreen', 'true');
-        iframe.setAttribute('allow', 'autoplay; encrypted-media');
-        wrapper.appendChild(iframe);
+
+        const isDirectVideo = (/\.(mp4|webm|ogv|m3u8)(\?.*)?$/i).test(url);
+        if (isDirectVideo) {
+            if (embedSyncBar) embedSyncBar.style.display = 'none';
+            const video = document.createElement('video');
+            video.src = url;
+            video.controls = true;
+            video.autoplay = true;
+            video.style.width = '100%';
+            video.style.height = '100%';
+
+            video.addEventListener('play', () => {
+                if (!isApplyingRemoteSync && window.broadcastSync) window.broadcastSync('PLAYING', video.currentTime);
+            });
+            video.addEventListener('pause', () => {
+                if (!isApplyingRemoteSync && window.broadcastSync) window.broadcastSync('PAUSED', video.currentTime);
+            });
+            video.addEventListener('seeked', () => {
+                if (!isApplyingRemoteSync && window.broadcastSync) {
+                    const state = video.paused ? 'PAUSED' : 'PLAYING';
+                    window.broadcastSync(state, video.currentTime);
+                }
+            });
+            wrapper.appendChild(video);
+        } else {
+            // StreamHG / Proxy / Third-Party iFrame Embed
+            if (embedSyncBar) embedSyncBar.style.display = 'flex';
+            const iframe = document.createElement('iframe');
+            iframe.src = url;
+            iframe.style.width = '100%';
+            iframe.style.height = '100%';
+            iframe.frameBorder = '0';
+            iframe.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-forms allow-presentation allow-popups allow-popups-to-escape-sandbox');
+            iframe.setAttribute('allowfullscreen', 'true');
+            iframe.setAttribute('allow', 'autoplay; encrypted-media');
+            wrapper.appendChild(iframe);
+        }
     }
 };
+
+// StreamHG / Proxy Embed Sync Bar Button Handlers
+const embedPlayBtn = document.getElementById('embed-play-btn');
+const embedPauseBtn = document.getElementById('embed-pause-btn');
+const embedSeekBackBtn = document.getElementById('embed-seek-back-btn');
+const embedSeekFwdBtn = document.getElementById('embed-seek-fwd-btn');
+
+if (embedPlayBtn) {
+    embedPlayBtn.addEventListener('click', () => {
+        embedPlayBtn.classList.add('active');
+        if (embedPauseBtn) embedPauseBtn.classList.remove('active');
+        sendIframeCommand('play');
+        sendIframeCommand('playVideo');
+        if (window.broadcastSync) window.broadcastSync('PLAYING', 0);
+    });
+}
+
+if (embedPauseBtn) {
+    embedPauseBtn.addEventListener('click', () => {
+        embedPauseBtn.classList.add('active');
+        if (embedPlayBtn) embedPlayBtn.classList.remove('active');
+        sendIframeCommand('pause');
+        sendIframeCommand('pauseVideo');
+        if (window.broadcastSync) window.broadcastSync('PAUSED', 0);
+    });
+}
+
+if (embedSeekBackBtn) {
+    embedSeekBackBtn.addEventListener('click', () => {
+        sendIframeCommand('seekBy', -10);
+        if (window.broadcastSync) window.broadcastSync('SEEK_BACK', -10);
+    });
+}
+
+if (embedSeekFwdBtn) {
+    embedSeekFwdBtn.addEventListener('click', () => {
+        sendIframeCommand('seekBy', 10);
+        if (window.broadcastSync) window.broadcastSync('SEEK_FWD', 10);
+    });
+}
 
 const loadBtn = document.getElementById('load-btn');
 if (loadBtn) {
