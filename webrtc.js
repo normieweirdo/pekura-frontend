@@ -861,25 +861,26 @@ function fallbackCopy(text) {
         document.body.removeChild(textArea);
         
         if (successful) {
-            alert("Room ID copied: " + text + "\n\nShare this ID with your friends!");
+            alert("Room link copied to clipboard:\n\n" + text + "\n\nShare this link with your friends to join directly!");
         } else {
-            prompt("Your browser blocked the copy action. Please manually copy the Room ID:", text);
+            prompt("Your browser blocked the copy action. Please manually copy the Room Link:", text);
         }
     } catch (err) {
         console.error("Fallback copy failed", err);
-        prompt("Your browser blocked the copy action. Please manually copy the Room ID:", text);
+        prompt("Your browser blocked the copy action. Please manually copy the Room Link:", text);
     }
 }
 
 const copyInviteBtn = document.getElementById('copy-invite-btn');
 if (copyInviteBtn) {
     copyInviteBtn.addEventListener('click', () => {
+        const roomLink = window.location.origin + window.location.pathname + '?room=' + encodeURIComponent(currentRoomId);
         if (navigator.clipboard && window.isSecureContext) {
-            navigator.clipboard.writeText(currentRoomId)
-                .then(() => alert("Room ID copied: " + currentRoomId + "\n\nShare this ID with your friends!"))
-                .catch(() => fallbackCopy(currentRoomId));
+            navigator.clipboard.writeText(roomLink)
+                .then(() => alert("Room link copied to clipboard:\n\n" + roomLink + "\n\nShare this link with your friends to join directly!"))
+                .catch(() => fallbackCopy(roomLink));
         } else {
-            fallbackCopy(currentRoomId);
+            fallbackCopy(roomLink);
         }
     });
 }
