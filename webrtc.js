@@ -1,4 +1,4 @@
-const signalingServerUrl = 'https://your-app-name.onrender.com';
+const signalingServerUrl = 'https://pekura-backend.onrender.com';
 const socket = io(signalingServerUrl);
 
 const urlParams = new URLSearchParams(window.location.search);
