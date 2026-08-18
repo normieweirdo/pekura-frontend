@@ -147,8 +147,13 @@ body {
 }
 
 .status-indicator {
-    font-size: 0.8rem;
-    color: var(--text-muted);
+    font-size: 0.78rem;
+    font-weight: 500;
+    color: #cbd5e1;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--pill-border);
+    padding: 4px 12px;
+    border-radius: 9999px;
 }
 
 .join-pill-group {
