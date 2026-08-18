@@ -3,9 +3,21 @@ const socket = io(signalingServerUrl);
 
 const urlParams = new URLSearchParams(window.location.search);
 const roomId = urlParams.get('room') ? urlParams.get('room').trim() : null;
-let isHost = !roomId;
+
+// Preserve host status across browser refreshes using sessionStorage
+let isHost = !roomId || (roomId && sessionStorage.getItem('is_host_' + roomId) === 'true');
 window.isHost = isHost;
-let currentRoomId = isHost ? Math.floor(100000 + Math.random() * 900000).toString() : roomId;
+
+let currentRoomId = roomId ? roomId : Math.floor(100000 + Math.random() * 900000).toString();
+
+if (isHost) {
+    sessionStorage.setItem('is_host_' + currentRoomId, 'true');
+    // Ensure room ID remains in browser URL bar on refresh
+    try {
+        const newUrl = window.location.protocol + "//" + window.location.host + window.location.pathname + '?room=' + currentRoomId;
+        window.history.replaceState({ path: newUrl }, '', newUrl);
+    } catch(e) {}
+}
 
 const peerOptions = {
     config: {
