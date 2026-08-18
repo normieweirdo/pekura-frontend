@@ -284,23 +284,49 @@ document.getElementById('screenshare-btn').addEventListener('click', async () =>
         await stopScreenShare();
     } else {
         try {
-            const displayStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
+            const displayStream = await navigator.mediaDevices.getDisplayMedia({ 
+                video: { cursor: "always" }, 
+                audio: true 
+            });
             const screenTrack = displayStream.getVideoTracks()[0];
             
-            // Replace local stream video track
-            const oldTrack = myStream.getVideoTracks()[0];
-            myStream.removeTrack(oldTrack);
-            myStream.addTrack(screenTrack);
-            
-            // Replace track on all active calls
+            if (!myStream) {
+                myStream = displayStream;
+                const myVideo = document.createElement('video');
+                addVideoStream(myVideo, myStream, document.getElementById('profile-name').value + " (Screen)");
+            } else {
+                const oldTracks = myStream.getVideoTracks();
+                if (oldTracks.length > 0) {
+                    oldTracks.forEach(t => t.stop());
+                    myStream.removeTrack(oldTracks[0]);
+                }
+                myStream.addTrack(screenTrack);
+            }
+
+            // Replace track across all active WebRTC peer connections
             currentCalls.forEach(call => {
-                const sender = call.peerConnection.getSenders().find(s => s.track && s.track.kind === 'video');
-                if (sender) sender.replaceTrack(screenTrack);
+                if (call.peerConnection) {
+                    const senders = call.peerConnection.getSenders();
+                    const videoSender = senders.find(s => s.track && s.track.kind === 'video');
+                    if (videoSender) {
+                        videoSender.replaceTrack(screenTrack);
+                    }
+                }
             });
-            
+
+            // Make sure video container shows the stream
+            const myWrapper = document.getElementById('webcam-' + myStream.id);
+            if (myWrapper) {
+                myWrapper.style.display = 'flex';
+                myWrapper.classList.remove('small');
+                myWrapper.classList.add('large');
+            }
+
             isScreenSharing = true;
-            document.getElementById('screenshare-btn').classList.add('active');
-            
+            const btn = document.getElementById('screenshare-btn');
+            btn.classList.add('active');
+            btn.querySelector('span').textContent = "Stop Screen";
+
             screenTrack.onended = () => {
                 stopScreenShare();
             };
@@ -311,25 +337,33 @@ document.getElementById('screenshare-btn').addEventListener('click', async () =>
 });
 
 async function stopScreenShare() {
-    if (!isScreenSharing) return;
-    const oldTrack = myStream.getVideoTracks()[0];
-    oldTrack.stop();
-    
-    // Request webcam again
-    const camStream = await navigator.mediaDevices.getUserMedia({ video: true });
-    const camTrack = camStream.getVideoTracks()[0];
-    
-    myStream.removeTrack(oldTrack);
-    myStream.addTrack(camTrack);
-    
-    currentCalls.forEach(call => {
-        const sender = call.peerConnection.getSenders().find(s => s.track && s.track.kind === 'video');
-        if (sender) sender.replaceTrack(camTrack);
-    });
-    
-    camTrack.enabled = videoEnabled;
+    if (!isScreenSharing || !myStream) return;
+    try {
+        const oldTracks = myStream.getVideoTracks();
+        oldTracks.forEach(t => t.stop());
+
+        const camStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true }).catch(() => null);
+        if (camStream) {
+            const camTrack = camStream.getVideoTracks()[0];
+            if (oldTracks.length > 0) myStream.removeTrack(oldTracks[0]);
+            myStream.addTrack(camTrack);
+            camTrack.enabled = videoEnabled;
+
+            currentCalls.forEach(call => {
+                if (call.peerConnection) {
+                    const videoSender = call.peerConnection.getSenders().find(s => s.track && s.track.kind === 'video');
+                    if (videoSender) videoSender.replaceTrack(camTrack);
+                }
+            });
+        }
+    } catch(e) {}
+
     isScreenSharing = false;
-    document.getElementById('screenshare-btn').classList.remove('active');
+    const btn = document.getElementById('screenshare-btn');
+    if (btn) {
+        btn.classList.remove('active');
+        btn.querySelector('span').textContent = "Screen";
+    }
 }
 
 // Broadcast Video Sync State (used by script.js)
