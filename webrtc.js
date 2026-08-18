@@ -397,52 +397,91 @@ if (toggleOverlayBtn) {
 
 // Fullscreen Mode with Overlaid Webcams Support
 const fullscreenBtn = document.getElementById('fullscreen-btn');
+const exitFullscreenBtn = document.getElementById('exit-fullscreen-btn');
 
-function toggleAppFullscreen() {
+function enterFullViewport() {
     const videoWrapper = document.getElementById('video-wrapper');
+    const webcamsContainer = document.getElementById('webcams-container');
+    
+    videoWrapper.classList.add('full-viewport');
+    videoWrapper.appendChild(webcamsContainer);
+    webcamsContainer.classList.add('overlay-mode');
+    
+    if (exitFullscreenBtn) exitFullscreenBtn.style.display = 'flex';
+    if (fullscreenBtn) fullscreenBtn.classList.add('active');
+
+    // Also attempt browser Fullscreen API
     if (!document.fullscreenElement && !document.webkitFullscreenElement) {
         if (videoWrapper.requestFullscreen) {
-            videoWrapper.requestFullscreen();
+            videoWrapper.requestFullscreen().catch(() => {});
         } else if (videoWrapper.webkitRequestFullscreen) {
-            videoWrapper.webkitRequestFullscreen();
+            videoWrapper.webkitRequestFullscreen().catch(() => {});
         }
-    } else {
+    }
+
+    const wrappers = webcamsContainer.querySelectorAll('.webcam-wrapper');
+    wrappers.forEach((w, idx) => {
+        w.style.top = (25 + (idx * 25)) + 'px';
+        w.style.right = '25px';
+        w.style.left = 'auto';
+    });
+}
+
+function exitFullViewport() {
+    const videoWrapper = document.getElementById('video-wrapper');
+    const webcamsContainer = document.getElementById('webcams-container');
+    
+    videoWrapper.classList.remove('full-viewport');
+    if (exitFullscreenBtn) exitFullscreenBtn.style.display = 'none';
+    if (fullscreenBtn) fullscreenBtn.classList.remove('active');
+
+    if (document.fullscreenElement || document.webkitFullscreenElement) {
         if (document.exitFullscreen) {
-            document.exitFullscreen();
+            document.exitFullscreen().catch(() => {});
         } else if (document.webkitExitFullscreen) {
-            document.webkitExitFullscreen();
+            document.webkitExitFullscreen().catch(() => {});
         }
+    }
+
+    if (!isCameraOverlayMode) {
+        document.body.appendChild(webcamsContainer);
+        webcamsContainer.classList.remove('overlay-mode');
+    } else {
+        videoWrapper.appendChild(webcamsContainer);
     }
 }
 
 if (fullscreenBtn) {
-    fullscreenBtn.addEventListener('click', toggleAppFullscreen);
+    fullscreenBtn.addEventListener('click', () => {
+        const videoWrapper = document.getElementById('video-wrapper');
+        if (videoWrapper.classList.contains('full-viewport')) {
+            exitFullViewport();
+        } else {
+            enterFullViewport();
+        }
+    });
 }
+
+if (exitFullscreenBtn) {
+    exitFullscreenBtn.addEventListener('click', exitFullViewport);
+}
+
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+        const videoWrapper = document.getElementById('video-wrapper');
+        if (videoWrapper && videoWrapper.classList.contains('full-viewport')) {
+            exitFullViewport();
+        }
+    }
+});
 
 function handleFullscreenChange() {
     const fsElement = document.fullscreenElement || document.webkitFullscreenElement;
-    const webcamsContainer = document.getElementById('webcams-container');
-    const videoWrapper = document.getElementById('video-wrapper');
-    
-    if (fsElement) {
-        videoWrapper.appendChild(webcamsContainer);
-        webcamsContainer.classList.add('overlay-mode');
-        webcamsContainer.style.zIndex = '2147483647';
-        
-        const wrappers = webcamsContainer.querySelectorAll('.webcam-wrapper');
-        wrappers.forEach((w, idx) => {
-            w.style.top = (20 + (idx * 25)) + 'px';
-            w.style.right = '20px';
-            w.style.left = 'auto';
-        });
-    } else {
-        if (!isCameraOverlayMode) {
-            document.body.appendChild(webcamsContainer);
-            webcamsContainer.classList.remove('overlay-mode');
-        } else {
-            videoWrapper.appendChild(webcamsContainer);
+    if (!fsElement) {
+        const videoWrapper = document.getElementById('video-wrapper');
+        if (videoWrapper && videoWrapper.classList.contains('full-viewport')) {
+            exitFullViewport();
         }
-        webcamsContainer.style.zIndex = '2000';
     }
 }
 
