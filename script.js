@@ -141,7 +141,7 @@ window.applyVideoSync = function(state, time) {
 
     try {
         const currentTime = player.getCurrentTime ? player.getCurrentTime() : 0;
-        if (Math.abs(currentTime - time) > 1.2) {
+        if (Math.abs(currentTime - time) > 0.3) {
             player.seekTo(time, true);
         }
     } catch(e) {}
@@ -160,23 +160,38 @@ window.applyVideoSync = function(state, time) {
 
     setTimeout(() => {
         isApplyingRemoteSync = false;
-    }, 600);
+    }, 500);
 };
 
-// Continuous seek / timestamp drift detector (polls every 700ms)
+// High-precision Seek Forward & Backward Detector (polls every 250ms)
+let lastCheckedTime = 0;
+let lastCheckTimestamp = Date.now();
+
 setInterval(() => {
-    if (player && typeof player.getCurrentTime === 'function' && typeof player.getPlayerState === 'function') {
-        const state = player.getPlayerState();
-        if (state === YT.PlayerState.PLAYING || state === YT.PlayerState.PAUSED) {
-            const curTime = player.getCurrentTime();
-            if (!isApplyingRemoteSync && Math.abs(curTime - lastBroadcastTime) > 2.0) {
-                lastBroadcastTime = curTime;
-                const stateStr = (state === YT.PlayerState.PLAYING) ? 'PLAYING' : 'PAUSED';
-                if (window.broadcastSync) window.broadcastSync(stateStr, curTime);
-            }
+    if (!player || typeof player.getCurrentTime !== 'function' || typeof player.getPlayerState !== 'function') return;
+    if (isApplyingRemoteSync) return;
+
+    const now = Date.now();
+    const curTime = player.getCurrentTime();
+    const state = player.getPlayerState();
+    const elapsedRealTime = (now - lastCheckTimestamp) / 1000;
+
+    // Expected current time if playing at 1x speed
+    const expectedTime = (state === YT.PlayerState.PLAYING) ? (lastCheckedTime + elapsedRealTime) : lastCheckedTime;
+    const drift = Math.abs(curTime - expectedTime);
+
+    // If time jumped forward or backward by more than 0.8s
+    if (drift > 0.8 && lastCheckedTime > 0) {
+        lastBroadcastTime = curTime;
+        const stateStr = (state === YT.PlayerState.PLAYING) ? 'PLAYING' : 'PAUSED';
+        if (window.broadcastSync) {
+            window.broadcastSync(stateStr, curTime);
         }
     }
-}, 700);
+
+    lastCheckedTime = curTime;
+    lastCheckTimestamp = now;
+}, 250);
 
 // Extract Video ID from URL
 function extractVideoID(url) {
