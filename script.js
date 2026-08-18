@@ -185,3 +185,91 @@ document.addEventListener('mouseup', () => {
         videoWrapper.classList.remove('dragging');
     }
 });
+
+// Crisp Field of Blinking Dots Background Component
+(function initBlinkingDots() {
+    function setupCanvas() {
+        let canvas = document.getElementById('blinking-dots-canvas');
+        if (!canvas) {
+            canvas = document.createElement('canvas');
+            canvas.id = 'blinking-dots-canvas';
+            canvas.style.cssText = 'position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; pointer-events: none; z-index: -1;';
+            document.body.prepend(canvas);
+        }
+
+        const ctx = canvas.getContext('2d');
+        let width, height;
+        let dots = [];
+        const spacing = 28; // Grid spacing in pixels
+        const dotRadius = 1.5;
+
+        function resize() {
+            width = canvas.width = window.innerWidth;
+            height = canvas.height = window.innerHeight;
+            createGrid();
+        }
+
+        function createGrid() {
+            dots = [];
+            const cols = Math.ceil(width / spacing);
+            const rows = Math.ceil(height / spacing);
+
+            for (let r = 0; r < rows; r++) {
+                for (let c = 0; c < cols; c++) {
+                    dots.push({
+                        x: c * spacing + spacing / 2,
+                        y: r * spacing + spacing / 2,
+                        baseAlpha: Math.random() * 0.08 + 0.04,
+                        currentAlpha: Math.random() * 0.1,
+                        targetAlpha: Math.random() * 0.08,
+                        speed: 0.005 + Math.random() * 0.015,
+                        color: Math.random() > 0.3 ? '139, 92, 246' : '244, 63, 94' // Purple & Rose accent dots
+                    });
+                }
+            }
+        }
+
+        function animate() {
+            ctx.clearRect(0, 0, width, height);
+
+            for (let i = 0; i < dots.length; i++) {
+                const d = dots[i];
+                
+                if (Math.abs(d.currentAlpha - d.targetAlpha) < 0.01) {
+                    if (Math.random() < 0.02) { // 2% chance per frame to start blinking
+                        d.targetAlpha = 0.4 + Math.random() * 0.45;
+                        d.speed = 0.01 + Math.random() * 0.025;
+                    } else {
+                        d.targetAlpha = d.baseAlpha;
+                    }
+                }
+
+                d.currentAlpha += (d.targetAlpha - d.currentAlpha) * d.speed;
+
+                ctx.beginPath();
+                ctx.arc(d.x, d.y, dotRadius, 0, Math.PI * 2);
+                ctx.fillStyle = `rgba(${d.color}, ${d.currentAlpha})`;
+                ctx.fill();
+
+                if (d.currentAlpha > 0.35) {
+                    ctx.beginPath();
+                    ctx.arc(d.x, d.y, dotRadius * 2.5, 0, Math.PI * 2);
+                    ctx.fillStyle = `rgba(${d.color}, ${d.currentAlpha * 0.25})`;
+                    ctx.fill();
+                }
+            }
+
+            requestAnimationFrame(animate);
+        }
+
+        window.addEventListener('resize', resize);
+        resize();
+        animate();
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', setupCanvas);
+    } else {
+        setupCanvas();
+    }
+})();
