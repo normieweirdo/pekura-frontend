@@ -366,6 +366,35 @@ async function stopScreenShare() {
     }
 }
 
+// Camera Overlay on Video Toggle
+let isCameraOverlayMode = false;
+const toggleOverlayBtn = document.getElementById('toggle-overlay-btn');
+
+if (toggleOverlayBtn) {
+    toggleOverlayBtn.addEventListener('click', () => {
+        isCameraOverlayMode = !isCameraOverlayMode;
+        toggleOverlayBtn.classList.toggle('active', isCameraOverlayMode);
+        
+        const webcamsContainer = document.getElementById('webcams-container');
+        const videoWrapper = document.getElementById('video-wrapper');
+        
+        if (isCameraOverlayMode) {
+            videoWrapper.appendChild(webcamsContainer);
+            webcamsContainer.classList.add('overlay-mode');
+            
+            const wrappers = webcamsContainer.querySelectorAll('.webcam-wrapper');
+            wrappers.forEach((w, idx) => {
+                w.style.top = (15 + (idx * 20)) + 'px';
+                w.style.right = '15px';
+                w.style.left = 'auto';
+            });
+        } else {
+            document.body.appendChild(webcamsContainer);
+            webcamsContainer.classList.remove('overlay-mode');
+        }
+    });
+}
+
 // Broadcast Video Sync State (used by script.js)
 window.broadcastSync = function(state, time) {
     socket.emit('broadcast', { 
