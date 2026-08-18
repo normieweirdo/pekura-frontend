@@ -161,7 +161,11 @@ function makeDraggable(el) {
 
 function addVideoStream(video, stream, name) {
     const wrapper = document.createElement('div');
-    wrapper.classList.add('webcam-wrapper', 'small');
+    if (name && name.includes('(Screen)')) {
+        wrapper.classList.add('webcam-wrapper', 'large');
+    } else {
+        wrapper.classList.add('webcam-wrapper', 'small');
+    }
     
     wrapper.addEventListener('click', (e) => {
         if (wrapper.style.cursor === 'grabbing' || e.target.classList.contains('webcam-close-btn')) return;
