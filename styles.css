@@ -1,0 +1,575 @@
+:root {
+    --bg-color: #0b0914;
+    --panel-bg: rgba(30, 25, 45, 0.75);
+    --text-main: #f4f1fa;
+    --text-muted: #a59ebb;
+    --primary: #8b5cf6;
+    --primary-hover: #7c3aed;
+    --accent: #f43f5e;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: 'Inter', sans-serif;
+    /* Sleek Dark Lavender / Midnight gradient */
+    background: linear-gradient(-45deg, #0b0914, #1a1528, #2d2342, #110d1f);
+    background-size: 400% 400%;
+    animation: gradientBG 20s ease infinite;
+    color: var(--text-main);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    padding: 20px;
+    position: relative;
+}
+
+body::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    /* Subtle geometric penguin watermark */
+    background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="40" fill="white" opacity="0.015"/><ellipse cx="50" cy="55" rx="30" ry="35" fill="white" opacity="0.02"/><circle cx="35" cy="40" r="4" fill="white" opacity="0.03"/><circle cx="65" cy="40" r="4" fill="white" opacity="0.03"/><polygon points="45,45 55,45 50,55" fill="white" opacity="0.03"/></svg>');
+    background-size: 100px 100px;
+    z-index: -1;
+    pointer-events: none;
+}
+
+@keyframes gradientBG {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+}
+
+.app-container {
+    width: 100%;
+    max-width: 1200px;
+    background: var(--panel-bg);
+    border-radius: 24px;
+    padding: 30px;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+}
+
+header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 30px;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+    padding-bottom: 15px;
+}
+
+header h1 {
+    font-size: 2.2rem;
+    font-weight: 800;
+    background: linear-gradient(135deg, #a855f7, #6366f1);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    letter-spacing: -0.5px;
+}
+
+.badge {
+    font-size: 0.75rem;
+    font-weight: 600;
+    background: var(--accent);
+    color: white;
+    -webkit-text-fill-color: white;
+    padding: 4px 10px;
+    border-radius: 20px;
+    vertical-align: middle;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+}
+
+.header-actions {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+.profile-input {
+    padding: 8px 12px;
+    border-radius: 8px;
+    border: 1px solid rgba(255,255,255,0.2);
+    background: rgba(0,0,0,0.3);
+    color: white;
+    font-size: 0.9rem;
+    width: 150px;
+}
+
+.profile-input:focus {
+    outline: none;
+    border-color: var(--primary);
+}
+
+.room-info {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    color: var(--text-muted);
+}
+
+.secondary-btn {
+    background: rgba(255,255,255,0.1);
+    padding: 8px 15px;
+    font-size: 0.9rem;
+}
+
+.secondary-btn:hover {
+    background: rgba(255,255,255,0.2);
+}
+
+.main-layout {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 30px;
+}
+
+@media (max-width: 900px) {
+    .main-layout {
+        grid-template-columns: 1fr;
+    }
+}
+
+.left-panel {
+    display: flex;
+    flex-direction: column;
+}
+
+.input-section {
+    display: flex;
+    gap: 15px;
+    margin-bottom: 25px;
+}
+
+input[type="text"] {
+    flex-grow: 1;
+    padding: 15px 20px;
+    border-radius: 12px;
+    border: 1px solid rgba(139, 92, 246, 0.2);
+    background: rgba(0, 0, 0, 0.4);
+    color: white;
+    font-size: 1rem;
+    transition: all 0.3s ease;
+    backdrop-filter: blur(10px);
+}
+
+input[type="text"]:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.25);
+    background: rgba(0, 0, 0, 0.5);
+}
+
+
+button {
+    padding: 0 25px;
+    border-radius: 12px;
+    border: none;
+    background: linear-gradient(135deg, var(--primary), var(--primary-hover));
+    color: white;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 4px 15px rgba(99, 102, 241, 0.4);
+}
+
+button:hover {
+    background: var(--primary-hover);
+}
+
+button:active {
+    transform: scale(0.97);
+}
+
+.video-container {
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    background: black;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    position: relative;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    transition: box-shadow 0.3s ease;
+}
+
+.video-container.dragging {
+    position: fixed;
+    z-index: 1000;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+    cursor: grabbing;
+    transition: none; /* Disable transition while dragging for smooth movement */
+}
+
+.drag-handle {
+    position: absolute;
+    top: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0, 0, 0, 0.6);
+    color: white;
+    padding: 8px;
+    border-radius: 50%;
+    cursor: grab;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.3s ease, background 0.3s ease;
+}
+
+.video-container:hover .drag-handle {
+    opacity: 1;
+}
+
+.drag-handle:hover {
+    background: rgba(0, 0, 0, 0.8);
+}
+
+.drag-handle:active {
+    cursor: grabbing;
+}
+
+/* overlay to block iframe pointer events while dragging */
+.iframe-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 5;
+    display: none;
+}
+
+.video-container.dragging .iframe-overlay {
+    display: block;
+}
+
+.placeholder {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    color: var(--text-muted);
+    font-size: 1.1rem;
+}
+
+.video-container iframe {
+    width: 100%;
+    height: 100%;
+    border: none;
+}
+
+.controls-info {
+    margin-top: 15px;
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    background: rgba(0, 0, 0, 0.2);
+    padding: 10px;
+    border-radius: 8px;
+}
+
+/* Chat Styling */
+.chat-container {
+    background: rgba(0,0,0,0.25);
+    border-radius: 16px;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-height: 400px;
+    border: 1px solid rgba(255,255,255,0.08);
+    backdrop-filter: blur(10px);
+}
+
+.chat-header {
+    padding: 15px;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+
+.chat-header h3 {
+    font-size: 1.1rem;
+    color: var(--text-main);
+}
+
+.chat-messages {
+    flex-grow: 1;
+    padding: 15px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.message {
+    background: rgba(139, 92, 246, 0.15);
+    padding: 12px 18px;
+    border-radius: 12px;
+    font-size: 0.95rem;
+    line-height: 1.5;
+    word-break: break-word;
+    animation: slideIn 0.3s ease forwards;
+    position: relative;
+    border: 1px solid rgba(139, 92, 246, 0.25);
+    color: var(--text-main);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+@keyframes slideIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.message.system {
+    background: transparent;
+    color: var(--text-muted);
+    text-align: center;
+    font-size: 0.8rem;
+    border: none;
+}
+
+.message.self {
+    background: rgba(59, 130, 246, 0.2);
+    align-self: flex-end;
+    border: 1px solid rgba(59, 130, 246, 0.3);
+}
+
+.chat-input-wrapper {
+    display: flex;
+    padding: 15px;
+    gap: 10px;
+    border-top: 1px solid rgba(255,255,255,0.05);
+}
+
+.chat-input-wrapper input {
+    padding: 10px 15px;
+}
+
+.chat-input-wrapper button {
+    padding: 0 15px;
+}
+
+/* Webcams Styling */
+#webcams-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none; /* Let clicks pass through */
+    z-index: 2000;
+}
+
+.webcam-wrapper {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    background: #000;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    pointer-events: auto; /* Re-enable clicks */
+    cursor: grab;
+    transition: width 0.3s ease, height 0.3s ease, box-shadow 0.3s ease;
+    border: 2px solid rgba(255,255,255,0.1);
+    display: flex;
+}
+
+.webcam-wrapper:active {
+    cursor: grabbing;
+}
+
+.webcam-wrapper.small {
+    width: 200px;
+    aspect-ratio: 4 / 3;
+}
+
+.webcam-wrapper.large {
+    width: 400px;
+    aspect-ratio: 4 / 3;
+}
+
+.webcam-video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    pointer-events: none; /* Prevent video from capturing clicks */
+}
+
+.webcam-name {
+    position: absolute;
+    bottom: 10px;
+    left: 10px;
+    background: rgba(0,0,0,0.7);
+    color: white;
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    pointer-events: none;
+}
+
+/* Media Controls */
+.media-controls {
+    display: flex;
+    gap: 15px;
+    margin-top: 20px;
+    padding: 15px;
+    background: rgba(0,0,0,0.25);
+    border-radius: 12px;
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255,255,255,0.08);
+}
+
+.media-btn {
+    background: rgba(255,255,255,0.1);
+    border: 1px solid rgba(255,255,255,0.1);
+    box-shadow: none;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.media-btn:hover {
+    background: rgba(255,255,255,0.2);
+}
+
+.media-btn.danger {
+    background: rgba(244, 63, 94, 0.2);
+    border-color: rgba(244, 63, 94, 0.5);
+    color: #fca5a5;
+}
+
+.media-btn.danger:hover {
+    background: rgba(244, 63, 94, 0.4);
+}
+
+.media-btn.active {
+    background: rgba(99, 102, 241, 0.4);
+    border-color: var(--primary);
+}
+
+/* Video Queue */
+.video-queue-panel {
+    margin-top: 20px;
+    background: rgba(0,0,0,0.25);
+    border-radius: 16px;
+    padding: 20px;
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255,255,255,0.08);
+}
+
+.queue-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+}
+
+.queue-header h3 {
+    font-size: 1.1rem;
+    color: var(--text-main);
+}
+
+.queue-list {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.queue-list li {
+    background: rgba(255,255,255,0.05);
+    padding: 10px 15px;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    word-break: break-all;
+}
+
+.empty-queue {
+    color: var(--text-muted);
+    font-style: italic;
+    justify-content: center !important;
+    background: transparent !important;
+}
+
+/* Reactions */
+.reaction-bar {
+    position: absolute;
+    bottom: -10px;
+    right: 5px;
+    background: rgba(255, 255, 255, 0.9);
+    border-radius: 12px;
+    padding: 2px 5px;
+    font-size: 0.8rem;
+    display: flex;
+    gap: 4px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+}
+
+.reaction-btn {
+    cursor: pointer;
+    transition: transform 0.1s;
+}
+.reaction-btn:hover {
+    transform: scale(1.2);
+}
+
+.reaction-menu {
+    position: absolute;
+    top: -25px;
+    right: 0;
+    background: white;
+    padding: 5px;
+    border-radius: 8px;
+    display: none;
+    gap: 5px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+    z-index: 10;
+}
+.message:hover .reaction-menu {
+    display: flex;
+}
+
+/* GIFs */
+.message img.chat-gif {
+    max-width: 100%;
+    border-radius: 8px;
+    margin-top: 5px;
+    display: block;
+}
+
+/* Confetti */
+.confetti {
+    position: fixed;
+    width: 10px;
+    height: 10px;
+    animation: fall linear forwards;
+    z-index: 9999;
+    pointer-events: none;
+}
+
+@keyframes fall {
+    to {
+        transform: translateY(100vh) rotate(720deg);
+    }
+}
