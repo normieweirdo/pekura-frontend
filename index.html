@@ -66,9 +66,15 @@
 
                 <!-- Video Container -->
                 <div class="video-container" id="video-wrapper">
-                    <div class="drag-handle" id="drag-handle" title="Drag to move">
+                    <div class="drag-handle" id="drag-handle" title="Drag to move video">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="12" r="1"></circle><circle cx="9" cy="5" r="1"></circle><circle cx="9" cy="19" r="1"></circle><circle cx="15" cy="12" r="1"></circle><circle cx="15" cy="5" r="1"></circle><circle cx="15" cy="19" r="1"></circle></svg>
                     </div>
+                    <!-- 4 Corner Resize Handles -->
+                    <div class="resize-handle top-left" data-corner="tl" title="Resize Top-Left"></div>
+                    <div class="resize-handle top-right" data-corner="tr" title="Resize Top-Right"></div>
+                    <div class="resize-handle bottom-left" data-corner="bl" title="Resize Bottom-Left"></div>
+                    <div class="resize-handle bottom-right" data-corner="br" title="Resize Bottom-Right"></div>
+                    <div id="drag-shield" class="drag-shield" style="display: none;"></div>
                     <button id="exit-fullscreen-btn" class="exit-fullscreen-floating-btn" style="display: none;" title="Exit Fullscreen Mode">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
                         <span>Exit Fullscreen</span>
@@ -203,7 +209,7 @@
     <!-- Scripts -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.min.js"></script>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
-    <script src="script.js?v=9.0" defer></script>
-    <script src="webrtc.js?v=9.0" defer></script>
+    <script src="script.js?v=10.0" defer></script>
+    <script src="webrtc.js?v=10.0" defer></script>
 </body>
 </html>

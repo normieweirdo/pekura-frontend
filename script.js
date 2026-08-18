@@ -245,51 +245,125 @@ if (loadBtn) {
 
 // Chat logic moved to webrtc.js for network synchronization
 
-// Drag Logic for Video Container
+// Draggable & 4-Corner Resizable Engine for Video Container
 const videoWrapper = document.getElementById('video-wrapper');
 const dragHandle = document.getElementById('drag-handle');
+const dragShield = document.getElementById('drag-shield');
+const resizeHandles = document.querySelectorAll('.resize-handle');
 
 let isDragging = false;
-let startX, startY;
-let initialX, initialY;
-let draggedOnce = false;
+let isResizing = false;
+let resizeCorner = '';
 
-dragHandle.addEventListener('mousedown', (e) => {
-    isDragging = true;
-    
-    // Convert to fixed position on first drag to preserve layout
-    if (!draggedOnce) {
+let startMouseX = 0, startMouseY = 0;
+let startLeft = 0, startTop = 0;
+let startWidth = 0, startHeight = 0;
+let positionFixedSet = false;
+
+function ensureFixedPositioning() {
+    if (!positionFixedSet && videoWrapper) {
         const rect = videoWrapper.getBoundingClientRect();
-        videoWrapper.style.width = rect.width + 'px';
-        videoWrapper.style.height = rect.height + 'px';
+        videoWrapper.style.position = 'fixed';
         videoWrapper.style.left = rect.left + 'px';
         videoWrapper.style.top = rect.top + 'px';
-        draggedOnce = true;
+        videoWrapper.style.width = rect.width + 'px';
+        videoWrapper.style.height = rect.height + 'px';
+        videoWrapper.style.maxWidth = 'none';
+        videoWrapper.style.margin = '0';
+        positionFixedSet = true;
     }
-    
-    videoWrapper.classList.add('dragging');
-    startX = e.clientX;
-    startY = e.clientY;
-    initialX = videoWrapper.offsetLeft;
-    initialY = videoWrapper.offsetTop;
-    
-    // Prevent text selection during drag
-    e.preventDefault();
+}
+
+// DRAG HANDLING
+if (dragHandle) {
+    dragHandle.addEventListener('mousedown', (e) => {
+        if (videoWrapper.classList.contains('full-viewport')) return;
+        e.preventDefault();
+        ensureFixedPositioning();
+
+        isDragging = true;
+        startMouseX = e.clientX;
+        startMouseY = e.clientY;
+        startLeft = videoWrapper.offsetLeft;
+        startTop = videoWrapper.offsetTop;
+
+        if (dragShield) dragShield.style.display = 'block';
+        videoWrapper.classList.add('dragging');
+    });
+}
+
+// 4-CORNER RESIZE HANDLING
+resizeHandles.forEach(handle => {
+    handle.addEventListener('mousedown', (e) => {
+        if (videoWrapper.classList.contains('full-viewport')) return;
+        e.preventDefault();
+        e.stopPropagation();
+        ensureFixedPositioning();
+
+        isResizing = true;
+        resizeCorner = handle.getAttribute('data-corner');
+        startMouseX = e.clientX;
+        startMouseY = e.clientY;
+
+        const rect = videoWrapper.getBoundingClientRect();
+        startLeft = rect.left;
+        startTop = rect.top;
+        startWidth = rect.width;
+        startHeight = rect.height;
+
+        if (dragShield) dragShield.style.display = 'block';
+    });
 });
 
+// GLOBAL MOUSE MOVE & UP LISTENERS
 document.addEventListener('mousemove', (e) => {
-    if (!isDragging) return;
-    
-    const dx = e.clientX - startX;
-    const dy = e.clientY - startY;
-    
-    videoWrapper.style.left = (initialX + dx) + 'px';
-    videoWrapper.style.top = (initialY + dy) + 'px';
+    if (isDragging) {
+        const dx = e.clientX - startMouseX;
+        const dy = e.clientY - startMouseY;
+        videoWrapper.style.left = (startLeft + dx) + 'px';
+        videoWrapper.style.top = (startTop + dy) + 'px';
+    } else if (isResizing) {
+        const dx = e.clientX - startMouseX;
+        const dy = e.clientY - startMouseY;
+
+        let newWidth = startWidth;
+        let newHeight = startHeight;
+        let newLeft = startLeft;
+        let newTop = startTop;
+
+        const minW = 280;
+        const minH = 160;
+
+        if (resizeCorner === 'br') { // Bottom-Right
+            newWidth = Math.max(minW, startWidth + dx);
+            newHeight = Math.max(minH, startHeight + dy);
+        } else if (resizeCorner === 'bl') { // Bottom-Left
+            newWidth = Math.max(minW, startWidth - dx);
+            newHeight = Math.max(minH, startHeight + dy);
+            if (newWidth > minW) newLeft = startLeft + dx;
+        } else if (resizeCorner === 'tr') { // Top-Right
+            newWidth = Math.max(minW, startWidth + dx);
+            newHeight = Math.max(minH, startHeight - dy);
+            if (newHeight > minH) newTop = startTop + dy;
+        } else if (resizeCorner === 'tl') { // Top-Left
+            newWidth = Math.max(minW, startWidth - dx);
+            newHeight = Math.max(minH, startHeight - dy);
+            if (newWidth > minW) newLeft = startLeft + dx;
+            if (newHeight > minH) newTop = startTop + dy;
+        }
+
+        videoWrapper.style.width = newWidth + 'px';
+        videoWrapper.style.height = newHeight + 'px';
+        videoWrapper.style.left = newLeft + 'px';
+        videoWrapper.style.top = newTop + 'px';
+    }
 });
 
 document.addEventListener('mouseup', () => {
-    if (isDragging) {
+    if (isDragging || isResizing) {
         isDragging = false;
+        isResizing = false;
+        if (dragShield) dragShield.style.display = 'none';
         videoWrapper.classList.remove('dragging');
     }
 });
