@@ -600,3 +600,132 @@ button:active {
         transform: translateY(100vh) rotate(720deg);
     }
 }
+
+/* Mobile Optimization & Responsive Rules */
+@media (max-width: 768px) {
+    body {
+        padding: 8px;
+    }
+
+    .app-container {
+        padding: 16px;
+        border-radius: 16px;
+    }
+
+    header {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 15px;
+    }
+
+    header h1 {
+        font-size: 1.8rem;
+    }
+
+    .header-actions {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 12px;
+    }
+
+    .room-info {
+        flex-wrap: wrap;
+        gap: 8px;
+        align-items: center;
+    }
+
+    .room-info input[type="text"] {
+        flex: 1 1 100px;
+        width: 100% !important;
+        box-sizing: border-box;
+    }
+
+    .main-layout {
+        grid-template-columns: 1fr;
+        gap: 20px;
+    }
+
+    .input-section {
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .input-section input[type="text"] {
+        width: 100%;
+    }
+
+    .input-section button {
+        width: 100%;
+        padding: 12px;
+        height: auto;
+    }
+
+    .media-controls {
+        flex-wrap: wrap;
+        gap: 8px;
+        padding: 10px;
+    }
+
+    .media-btn {
+        flex: 1 1 calc(50% - 8px);
+        justify-content: center;
+        padding: 10px 8px;
+        font-size: 0.85rem;
+    }
+
+    #host-controls {
+        width: 100%;
+        margin-left: 0 !important;
+    }
+
+    #host-controls button {
+        width: 100%;
+    }
+
+    .webcam-wrapper.small {
+        width: 130px;
+    }
+
+    .webcam-wrapper.large {
+        width: 240px;
+    }
+
+    .chat-container {
+        min-height: 320px;
+        height: 350px;
+    }
+
+    .chat-input-wrapper {
+        padding: 8px;
+        gap: 6px;
+    }
+
+    .chat-input-wrapper input {
+        padding: 8px 10px;
+        font-size: 0.9rem;
+    }
+
+    .chat-input-wrapper button {
+        padding: 0 10px;
+        font-size: 0.85rem;
+    }
+
+    #gif-picker {
+        width: calc(100vw - 30px) !important;
+        max-width: 290px !important;
+        right: 0 !important;
+        left: 50% !important;
+        transform: translateX(-50%) !important;
+        bottom: 60px !important;
+    }
+}
+
+@media (max-width: 480px) {
+    header h1 {
+        font-size: 1.5rem;
+    }
+
+    .media-btn {
+        flex: 1 1 100%;
+    }
+}
