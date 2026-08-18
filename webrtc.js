@@ -55,7 +55,7 @@ let myStream = null;
 let currentCalls = [];
 let userCount = 1;
 let roomLocked = false;
-window.hostOnlyVideo = true;
+window.hostOnlyVideo = false;
 
 window.onerror = function(msg, url, lineNo, columnNo, error) {
     document.getElementById('room-status').textContent = 'JS Error: ' + msg;

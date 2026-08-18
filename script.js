@@ -79,7 +79,7 @@ let hostHeartbeatInterval = null;
 function startHostHeartbeat() {
     stopHostHeartbeat();
     hostHeartbeatInterval = setInterval(() => {
-        if (window.isHost && player && typeof player.getCurrentTime === 'function' && typeof player.getPlayerState === 'function') {
+        if (player && typeof player.getCurrentTime === 'function' && typeof player.getPlayerState === 'function') {
             if (player.getPlayerState() === YT.PlayerState.PLAYING) {
                 if (window.broadcastSync) window.broadcastSync('PLAYING', player.getCurrentTime());
             }
@@ -95,20 +95,19 @@ function stopHostHeartbeat() {
 }
 
 function onPlayerStateChange(event) {
-    if (!window.isHost && window.hostOnlyVideo) return; // Guests can't control if restricted
     if (!player || typeof player.getCurrentTime !== 'function') return;
 
     const now = Date.now();
     if (now < remoteActionUntil) return; // Ignore events triggered by remote sync
 
     if (event.data === YT.PlayerState.PLAYING) {
-        if (window.isHost) startHostHeartbeat();
+        startHostHeartbeat();
         if (lastState === 'PLAYING' && (now - lastSyncTime < 800)) return;
         lastState = 'PLAYING';
         lastSyncTime = now;
         if (window.broadcastSync) window.broadcastSync('PLAYING', player.getCurrentTime());
     } else if (event.data === YT.PlayerState.PAUSED) {
-        if (window.isHost) stopHostHeartbeat();
+        stopHostHeartbeat();
         if (lastState === 'PAUSED' && (now - lastSyncTime < 800)) return;
         lastState = 'PAUSED';
         lastSyncTime = now;
@@ -121,7 +120,6 @@ window.applyVideoSync = function(state, time) {
         pendingSync = { state: state, time: time };
         return;
     }
-    if (window.isHost && window.hostOnlyVideo) return; // Host ignores guests if restricted
 
     remoteActionUntil = Date.now() + 2000;
 
@@ -198,18 +196,13 @@ window.loadVideo = function(url) {
 };
 
 document.getElementById('load-btn').addEventListener('click', () => {
-    if (!window.isHost && window.hostOnlyVideo) {
-        alert("The Host has disabled video loading for guests.");
-        return;
-    }
-
     const url = document.getElementById('video-url').value;
     if (!url) {
         alert("Please enter a URL.");
         return;
     }
     
-    // Broadcast the new video to peers if allowed
+    // Broadcast the new video to peers
     if (window.broadcastVideoSync) {
         window.broadcastVideoSync(url);
     }
@@ -223,10 +216,6 @@ const syncNowBtn = document.getElementById('sync-now-btn');
 
 if (syncPlayBtn) {
     syncPlayBtn.addEventListener('click', () => {
-        if (!window.isHost && window.hostOnlyVideo) {
-            alert("The Host has restricted video controls to host-only.");
-            return;
-        }
         if (player && typeof player.playVideo === 'function') {
             try { player.playVideo(); } catch(e) {}
         }
@@ -239,10 +228,6 @@ if (syncPlayBtn) {
 
 if (syncPauseBtn) {
     syncPauseBtn.addEventListener('click', () => {
-        if (!window.isHost && window.hostOnlyVideo) {
-            alert("The Host has restricted video controls to host-only.");
-            return;
-        }
         if (player && typeof player.pauseVideo === 'function') {
             try { player.pauseVideo(); } catch(e) {}
         }
