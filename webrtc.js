@@ -101,6 +101,9 @@ socket.on('connect', () => {
         if (res.chatHistory && res.chatHistory.length > 0) {
             res.chatHistory.forEach(msg => appendStructuredMessage(msg, 'peer'));
         }
+        if (res.activeScreenShare && res.activeScreenShare.peerId !== peer.id) {
+            showScreenshareChatNotice(res.activeScreenShare);
+        }
         window.hostOnlyVideo = res.hostOnlyVideo;
     });
 });
@@ -327,8 +330,12 @@ socket.on('broadcast', data => {
             const activeStream = myStream;
             const call = activeStream ? peer.call(data.peerId, activeStream) : peer.call(data.peerId);
             if (call) handleCall(call, (data.senderName || "User") + " (Screen)");
+            showScreenshareChatNotice(data);
+        } else {
+            appendSystemMessage("📺 You started sharing your screen.");
         }
     } else if (data.type === 'screenshare-stopped') {
+        removeScreenshareChatNotice(data.streamId);
         if (data.streamId) {
             const card = document.getElementById('webcam-' + data.streamId);
             if (card) card.remove();
@@ -833,6 +840,129 @@ function appendSystemMessage(text) {
     sysDiv.textContent = text;
     chatMessages.appendChild(sysDiv);
     chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+
+function escapeHtml(str) {
+    if (!str) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
+
+function showScreenshareChatNotice(data) {
+    if (!data || !chatMessages) return;
+    const cardId = 'screenshare-notice-' + (data.streamId || data.peerId || 'active');
+    
+    if (document.getElementById(cardId)) return;
+
+    const sender = data.senderName || 'A user';
+    const msgDiv = document.createElement('div');
+    msgDiv.className = 'screenshare-chat-card';
+    msgDiv.id = cardId;
+
+    msgDiv.innerHTML = `
+        <div class="screenshare-card-header">
+            <span class="live-badge">
+                <span class="live-pulse-dot"></span>
+                LIVE
+            </span>
+            <span><strong>${escapeHtml(sender)}</strong> started screen sharing</span>
+        </div>
+        <button class="watch-screenshare-btn">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+                <line x1="8" y1="21" x2="16" y2="21"></line>
+                <line x1="12" y1="17" x2="12" y2="21"></line>
+            </svg>
+            <span>Watch Screenshare</span>
+        </button>
+    `;
+
+    const watchBtn = msgDiv.querySelector('.watch-screenshare-btn');
+    watchBtn.addEventListener('click', () => {
+        watchScreenshare(data.streamId, data.peerId, sender);
+    });
+
+    chatMessages.appendChild(msgDiv);
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+
+function removeScreenshareChatNotice(streamId) {
+    const cards = document.querySelectorAll('.screenshare-chat-card');
+    cards.forEach(card => {
+        if (!streamId || card.id.includes(streamId)) {
+            card.style.opacity = '0.7';
+            card.style.background = 'rgba(148, 163, 184, 0.1)';
+            card.style.borderColor = 'rgba(148, 163, 184, 0.2)';
+            const header = card.querySelector('.screenshare-card-header');
+            if (header) {
+                header.classList.add('muted');
+                header.innerHTML = `
+                    <span class="ended-badge">ENDED</span>
+                    <span>Screen share ended</span>
+                `;
+            }
+            const btn = card.querySelector('.watch-screenshare-btn');
+            if (btn) btn.remove();
+            
+            setTimeout(() => {
+                card.style.transition = 'all 0.4s ease';
+                card.style.opacity = '0';
+                card.style.transform = 'translateY(-10px)';
+                setTimeout(() => card.remove(), 400);
+            }, 4000);
+        }
+    });
+}
+
+function watchScreenshare(streamId, peerId, senderName) {
+    let screenCard = streamId ? document.getElementById('webcam-' + streamId) : null;
+    
+    if (!screenCard) {
+        const wrappers = document.querySelectorAll('.webcam-wrapper');
+        for (let w of wrappers) {
+            const nameTag = w.querySelector('.webcam-name');
+            if (nameTag && nameTag.textContent.includes('(Screen)')) {
+                screenCard = w;
+                break;
+            }
+        }
+    }
+
+    if (screenCard) {
+        screenCard.style.display = 'flex';
+        screenCard.classList.remove('small');
+        screenCard.classList.add('large');
+
+        screenCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+        screenCard.classList.add('screenshare-focus-glow');
+        setTimeout(() => {
+            screenCard.classList.remove('screenshare-focus-glow');
+        }, 3500);
+    } else if (peerId && peerId !== peer.id) {
+        const activeStream = myStream;
+        const call = activeStream ? peer.call(peerId, activeStream) : peer.call(peerId);
+        if (call) {
+            handleCall(call, (senderName || "User") + " (Screen)");
+            call.on('stream', userVideoStream => {
+                setTimeout(() => {
+                    const newCard = document.getElementById('webcam-' + userVideoStream.id);
+                    if (newCard) {
+                        newCard.style.display = 'flex';
+                        newCard.classList.remove('small');
+                        newCard.classList.add('large');
+                        newCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        newCard.classList.add('screenshare-focus-glow');
+                        setTimeout(() => newCard.classList.remove('screenshare-focus-glow'), 3500);
+                    }
+                }, 300);
+            });
+        }
+    }
 }
 
 function triggerConfetti() {
