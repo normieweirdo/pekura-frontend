@@ -72,46 +72,62 @@ function onPlayerReady(event) {
 }
 
 let remoteActionUntil = 0;
-let lastSyncTime = 0;
-let lastState = null;
-let hostHeartbeatInterval = null;
+let userInteracted = false;
+let isApplyingRemoteSync = false;
+let lastBroadcastState = null;
+let lastBroadcastTime = 0;
 
-function startHostHeartbeat() {
-    stopHostHeartbeat();
-    hostHeartbeatInterval = setInterval(() => {
-        if (player && typeof player.getCurrentTime === 'function' && typeof player.getPlayerState === 'function') {
-            if (player.getPlayerState() === YT.PlayerState.PLAYING) {
-                if (window.broadcastSync) window.broadcastSync('PLAYING', player.getCurrentTime());
-            }
-        }
-    }, 2000);
-}
+const syncOverlay = document.getElementById('sync-overlay');
 
-function stopHostHeartbeat() {
-    if (hostHeartbeatInterval) {
-        clearInterval(hostHeartbeatInterval);
-        hostHeartbeatInterval = null;
+function showSyncOverlay() {
+    if (!userInteracted && syncOverlay) {
+        syncOverlay.style.display = 'flex';
     }
 }
 
+function hideSyncOverlay() {
+    userInteracted = true;
+    if (syncOverlay) {
+        syncOverlay.style.display = 'none';
+    }
+}
+
+if (syncOverlay) {
+    syncOverlay.addEventListener('click', (e) => {
+        e.stopPropagation();
+        hideSyncOverlay();
+        if (player && typeof player.playVideo === 'function') {
+            try {
+                player.unMute();
+                player.playVideo();
+            } catch(err) {}
+        }
+        if (window.requestSync) window.requestSync();
+    });
+}
+
+document.addEventListener('click', () => {
+    if (!userInteracted) {
+        hideSyncOverlay();
+    }
+});
+
 function onPlayerStateChange(event) {
     if (!player || typeof player.getCurrentTime !== 'function') return;
+    if (isApplyingRemoteSync) return; // Ignore events triggered by remote sync
 
-    const now = Date.now();
-    if (now < remoteActionUntil) return; // Ignore events triggered by remote sync
+    const currentTime = player.getCurrentTime();
 
     if (event.data === YT.PlayerState.PLAYING) {
-        startHostHeartbeat();
-        if (lastState === 'PLAYING' && (now - lastSyncTime < 800)) return;
-        lastState = 'PLAYING';
-        lastSyncTime = now;
-        if (window.broadcastSync) window.broadcastSync('PLAYING', player.getCurrentTime());
+        if (lastBroadcastState === 'PLAYING' && Math.abs(currentTime - lastBroadcastTime) < 0.8) return;
+        lastBroadcastState = 'PLAYING';
+        lastBroadcastTime = currentTime;
+        if (window.broadcastSync) window.broadcastSync('PLAYING', currentTime);
     } else if (event.data === YT.PlayerState.PAUSED) {
-        stopHostHeartbeat();
-        if (lastState === 'PAUSED' && (now - lastSyncTime < 800)) return;
-        lastState = 'PAUSED';
-        lastSyncTime = now;
-        if (window.broadcastSync) window.broadcastSync('PAUSED', player.getCurrentTime());
+        if (lastBroadcastState === 'PAUSED' && Math.abs(currentTime - lastBroadcastTime) < 0.8) return;
+        lastBroadcastState = 'PAUSED';
+        lastBroadcastTime = currentTime;
+        if (window.broadcastSync) window.broadcastSync('PAUSED', currentTime);
     }
 }
 
@@ -121,11 +137,11 @@ window.applyVideoSync = function(state, time) {
         return;
     }
 
-    remoteActionUntil = Date.now() + 2000;
+    isApplyingRemoteSync = true;
 
     try {
         const currentTime = player.getCurrentTime ? player.getCurrentTime() : 0;
-        if (Math.abs(currentTime - time) > 1.5) {
+        if (Math.abs(currentTime - time) > 1.2) {
             player.seekTo(time, true);
         }
     } catch(e) {}
@@ -134,26 +150,33 @@ window.applyVideoSync = function(state, time) {
         try {
             player.playVideo();
         } catch(e) {
-            try {
-                player.mute();
-                player.playVideo();
-            } catch(err) {}
+            showSyncOverlay();
         }
     } else if (state === 'PAUSED') {
         try {
             player.pauseVideo();
         } catch(e) {}
     }
+
+    setTimeout(() => {
+        isApplyingRemoteSync = false;
+    }, 600);
 };
 
-// Global click listener to restore audio if muted by autoplay policies
-document.addEventListener('click', () => {
-    if (player && typeof player.isMuted === 'function' && player.isMuted()) {
-        try {
-            player.unMute();
-        } catch(e) {}
+// Continuous seek / timestamp drift detector (polls every 700ms)
+setInterval(() => {
+    if (player && typeof player.getCurrentTime === 'function' && typeof player.getPlayerState === 'function') {
+        const state = player.getPlayerState();
+        if (state === YT.PlayerState.PLAYING || state === YT.PlayerState.PAUSED) {
+            const curTime = player.getCurrentTime();
+            if (!isApplyingRemoteSync && Math.abs(curTime - lastBroadcastTime) > 2.0) {
+                lastBroadcastTime = curTime;
+                const stateStr = (state === YT.PlayerState.PLAYING) ? 'PLAYING' : 'PAUSED';
+                if (window.broadcastSync) window.broadcastSync(stateStr, curTime);
+            }
+        }
     }
-});
+}, 700);
 
 // Extract Video ID from URL
 function extractVideoID(url) {
@@ -177,8 +200,7 @@ window.loadVideo = function(url) {
             player.destroy();
             player = null;
         }
-        // Generic iframe embed using strict DOM methods for XSS prevention
-        wrapper.innerHTML = ''; // safe clear
+        wrapper.innerHTML = '';
         const iframe = document.createElement('iframe');
         iframe.src = url;
         iframe.style.width = '100%';
@@ -189,60 +211,20 @@ window.loadVideo = function(url) {
         iframe.setAttribute('allow', 'autoplay; encrypted-media');
         wrapper.appendChild(iframe);
     }
-    const controlsInfo = document.getElementById('controls-info');
-    if (controlsInfo) {
-        controlsInfo.style.display = 'block';
-    }
 };
 
-document.getElementById('load-btn').addEventListener('click', () => {
-    const url = document.getElementById('video-url').value;
-    if (!url) {
-        alert("Please enter a URL.");
-        return;
-    }
-    
-    // Broadcast the new video to peers
-    if (window.broadcastVideoSync) {
-        window.broadcastVideoSync(url);
-    }
-    
-    window.loadVideo(url);
-});
-
-const syncPlayBtn = document.getElementById('sync-play-btn');
-const syncPauseBtn = document.getElementById('sync-pause-btn');
-const syncNowBtn = document.getElementById('sync-now-btn');
-
-if (syncPlayBtn) {
-    syncPlayBtn.addEventListener('click', () => {
-        if (player && typeof player.playVideo === 'function') {
-            try { player.playVideo(); } catch(e) {}
+const loadBtn = document.getElementById('load-btn');
+if (loadBtn) {
+    loadBtn.addEventListener('click', () => {
+        const url = document.getElementById('video-url').value;
+        if (!url) {
+            alert("Please enter a URL.");
+            return;
         }
-        syncPlayBtn.classList.add('active');
-        if (syncPauseBtn) syncPauseBtn.classList.remove('active');
-        const curTime = (player && typeof player.getCurrentTime === 'function') ? player.getCurrentTime() : 0;
-        if (window.broadcastSync) window.broadcastSync('PLAYING', curTime);
-    });
-}
-
-if (syncPauseBtn) {
-    syncPauseBtn.addEventListener('click', () => {
-        if (player && typeof player.pauseVideo === 'function') {
-            try { player.pauseVideo(); } catch(e) {}
+        if (window.broadcastVideoSync) {
+            window.broadcastVideoSync(url);
         }
-        syncPauseBtn.classList.add('active');
-        if (syncPlayBtn) syncPlayBtn.classList.remove('active');
-        const curTime = (player && typeof player.getCurrentTime === 'function') ? player.getCurrentTime() : 0;
-        if (window.broadcastSync) window.broadcastSync('PAUSED', curTime);
-    });
-}
-
-if (syncNowBtn) {
-    syncNowBtn.addEventListener('click', () => {
-        if (window.requestSync) {
-            window.requestSync();
-        }
+        window.loadVideo(url);
     });
 }
 

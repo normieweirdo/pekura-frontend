@@ -65,7 +65,12 @@
                     <div class="drag-handle" id="drag-handle" title="Drag to move">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="12" r="1"></circle><circle cx="9" cy="5" r="1"></circle><circle cx="9" cy="19" r="1"></circle><circle cx="15" cy="12" r="1"></circle><circle cx="15" cy="5" r="1"></circle><circle cx="15" cy="19" r="1"></circle></svg>
                     </div>
-                    <div class="iframe-overlay"></div>
+                    <div id="sync-overlay" class="sync-overlay" style="display: none;">
+                        <div class="sync-overlay-content">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                            <span>Click anywhere to start synced video</span>
+                        </div>
+                    </div>
                     <div id="player-container">
                         <div class="placeholder">
                             <div class="placeholder-icon">
@@ -78,18 +83,6 @@
                 
                 <!-- Media Action Bar -->
                 <div class="media-controls" id="media-controls">
-                    <button id="sync-play-btn" class="pill-control-btn active" title="Play Video for everyone">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
-                        <span>Play</span>
-                    </button>
-                    <button id="sync-pause-btn" class="pill-control-btn" title="Pause Video for everyone">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>
-                        <span>Pause</span>
-                    </button>
-                    <button id="sync-now-btn" class="pill-control-btn blue" title="Sync to Host video time">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/></svg>
-                        <span>Sync</span>
-                    </button>
                     <button id="toggle-camera-btn" class="pill-control-btn">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
                         <span>Camera</span>
@@ -194,7 +187,7 @@
     <!-- Scripts -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.min.js"></script>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
-    <script src="script.js?v=2.0"></script>
-    <script src="webrtc.js?v=2.0"></script>
+    <script src="script.js?v=3.0"></script>
+    <script src="webrtc.js?v=3.0"></script>
 </body>
 </html>

@@ -350,6 +350,41 @@ body {
     display: block;
 }
 
+.sync-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(4, 3, 8, 0.75);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 20;
+    cursor: pointer;
+    border-radius: 20px;
+}
+
+.sync-overlay-content {
+    background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+    color: white;
+    padding: 14px 28px;
+    border-radius: 9999px;
+    font-size: 0.92rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    box-shadow: 0 10px 30px rgba(99, 102, 241, 0.5);
+    transition: transform 0.2s ease;
+}
+
+.sync-overlay:hover .sync-overlay-content {
+    transform: scale(1.05);
+}
+
 .drag-handle {
     position: absolute;
     top: 12px;
