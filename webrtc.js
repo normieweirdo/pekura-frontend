@@ -395,6 +395,60 @@ if (toggleOverlayBtn) {
     });
 }
 
+// Fullscreen Mode with Overlaid Webcams Support
+const fullscreenBtn = document.getElementById('fullscreen-btn');
+
+function toggleAppFullscreen() {
+    const videoWrapper = document.getElementById('video-wrapper');
+    if (!document.fullscreenElement && !document.webkitFullscreenElement) {
+        if (videoWrapper.requestFullscreen) {
+            videoWrapper.requestFullscreen();
+        } else if (videoWrapper.webkitRequestFullscreen) {
+            videoWrapper.webkitRequestFullscreen();
+        }
+    } else {
+        if (document.exitFullscreen) {
+            document.exitFullscreen();
+        } else if (document.webkitExitFullscreen) {
+            document.webkitExitFullscreen();
+        }
+    }
+}
+
+if (fullscreenBtn) {
+    fullscreenBtn.addEventListener('click', toggleAppFullscreen);
+}
+
+function handleFullscreenChange() {
+    const fsElement = document.fullscreenElement || document.webkitFullscreenElement;
+    const webcamsContainer = document.getElementById('webcams-container');
+    const videoWrapper = document.getElementById('video-wrapper');
+    
+    if (fsElement) {
+        videoWrapper.appendChild(webcamsContainer);
+        webcamsContainer.classList.add('overlay-mode');
+        webcamsContainer.style.zIndex = '2147483647';
+        
+        const wrappers = webcamsContainer.querySelectorAll('.webcam-wrapper');
+        wrappers.forEach((w, idx) => {
+            w.style.top = (20 + (idx * 25)) + 'px';
+            w.style.right = '20px';
+            w.style.left = 'auto';
+        });
+    } else {
+        if (!isCameraOverlayMode) {
+            document.body.appendChild(webcamsContainer);
+            webcamsContainer.classList.remove('overlay-mode');
+        } else {
+            videoWrapper.appendChild(webcamsContainer);
+        }
+        webcamsContainer.style.zIndex = '2000';
+    }
+}
+
+document.addEventListener('fullscreenchange', handleFullscreenChange);
+document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+
 // Broadcast Video Sync State (used by script.js)
 window.broadcastSync = function(state, time) {
     socket.emit('broadcast', { 

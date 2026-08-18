@@ -568,6 +568,34 @@ body {
 .modal-actions-between { display: flex; justify-content: space-between; }
 .avatar-grid-layout { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-bottom: 24px; }
 
+/* Fullscreen Webcams Overlay Support */
+.video-container:fullscreen,
+.video-container:-webkit-full-screen {
+    width: 100vw !important;
+    height: 100vh !important;
+    border-radius: 0 !important;
+    max-width: none !important;
+    padding: 0 !important;
+    background: #000 !important;
+}
+
+.video-container:fullscreen #player-container,
+.video-container:-webkit-full-screen #player-container {
+    width: 100% !important;
+    height: 100% !important;
+}
+
+.video-container:fullscreen #webcams-container,
+.video-container:-webkit-full-screen #webcams-container {
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    z-index: 2147483647 !important;
+    pointer-events: none !important;
+}
+
 /* Webcams */
 #webcams-container { position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 2000; }
 #webcams-container.overlay-mode { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 30; }
