@@ -21,23 +21,13 @@
 
 body {
     font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
-    background-color: var(--bg-dark);
+    background: radial-gradient(ellipse at 50% -20%, #1e1b4b 0%, #0b0718 50%, #040308 100%);
+    background-attachment: fixed;
     color: var(--text-main);
     min-height: 100vh;
     margin: 0;
     padding: 0 16px 40px 16px;
     overflow-x: hidden;
-}
-
-#electric-waves-canvas {
-    position: fixed !important;
-    top: 0 !important;
-    left: 0 !important;
-    width: 100vw !important;
-    height: 100vh !important;
-    pointer-events: none !important;
-    z-index: -2 !important;
-    background: #040308 !important;
 }
 
 /* Floating Pill Navbar */
