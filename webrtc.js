@@ -202,10 +202,19 @@ function addVideoStream(video, stream, name) {
 
     video.srcObject = stream;
     video.addEventListener('loadedmetadata', () => {
-        video.play();
+        video.play().catch(() => {});
     });
     video.classList.add('webcam-video');
-    video.muted = (name === document.getElementById('profile-name').value);
+
+    // Mute strictly for local streams to prevent local audio feedback loop and echo
+    const myName = document.getElementById('profile-name').value;
+    const isLocalStream = name === myName || name.startsWith(myName) || (myStream && stream && stream.id === myStream.id);
+    if (isLocalStream) {
+        video.muted = true;
+        video.volume = 0;
+    } else {
+        video.muted = false;
+    }
 
     wrapper.append(video);
     wrapper.append(nameTag);
@@ -217,7 +226,14 @@ function addVideoStream(video, stream, name) {
 async function requestMedia() {
     if (myStream) return myStream;
     try {
-        myStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+        myStream = await navigator.mediaDevices.getUserMedia({ 
+            video: true, 
+            audio: {
+                echoCancellation: true,
+                noiseSuppression: true,
+                autoGainControl: true
+            } 
+        });
         
         const myWrapper = myStream ? document.getElementById('webcam-' + myStream.id) : null;
         if (myWrapper) {
@@ -299,7 +315,11 @@ document.getElementById('screenshare-btn').addEventListener('click', async () =>
         try {
             const displayStream = await navigator.mediaDevices.getDisplayMedia({ 
                 video: { cursor: "always" }, 
-                audio: true 
+                audio: {
+                    echoCancellation: true,
+                    noiseSuppression: true,
+                    suppressLocalAudioPlayback: true
+                } 
             });
             const screenTrack = displayStream.getVideoTracks()[0];
             
