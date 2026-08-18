@@ -13,6 +13,8 @@ function onYouTubeIframeAPIReady() {
     isPlayerReady = true;
 }
 
+let pendingSync = null;
+
 function initPlayer(videoId) {
     if (!isPlayerReady) return;
 
@@ -25,7 +27,10 @@ function initPlayer(videoId) {
         videoId: videoId,
         playerVars: {
             'playsinline': 1,
-            'autoplay': 1
+            'autoplay': 1,
+            'enablejsapi': 1,
+            'origin': window.location.origin,
+            'rel': 0
         },
         events: {
             'onReady': onPlayerReady,
@@ -35,45 +40,101 @@ function initPlayer(videoId) {
 }
 
 function onPlayerReady(event) {
-    event.target.playVideo();
+    if (pendingSync) {
+        window.applyVideoSync(pendingSync.state, pendingSync.time);
+        pendingSync = null;
+    } else {
+        try {
+            event.target.playVideo();
+        } catch(e) {}
+    }
 }
 
 let remoteActionUntil = 0;
 let lastSyncTime = 0;
+let lastState = null;
+let hostHeartbeatInterval = null;
+
+function startHostHeartbeat() {
+    stopHostHeartbeat();
+    hostHeartbeatInterval = setInterval(() => {
+        if (window.isHost && player && typeof player.getCurrentTime === 'function' && typeof player.getPlayerState === 'function') {
+            if (player.getPlayerState() === YT.PlayerState.PLAYING) {
+                if (window.broadcastSync) window.broadcastSync('PLAYING', player.getCurrentTime());
+            }
+        }
+    }, 2000);
+}
+
+function stopHostHeartbeat() {
+    if (hostHeartbeatInterval) {
+        clearInterval(hostHeartbeatInterval);
+        hostHeartbeatInterval = null;
+    }
+}
 
 function onPlayerStateChange(event) {
     if (!window.isHost && window.hostOnlyVideo) return; // Guests can't control if restricted
-    
+    if (!player || typeof player.getCurrentTime !== 'function') return;
+
     const now = Date.now();
     if (now < remoteActionUntil) return; // Ignore events triggered by remote sync
-    
-    if (now - lastSyncTime < 500) return; // debounce
-    lastSyncTime = now;
 
-    if (event.data == YT.PlayerState.PLAYING) {
+    if (event.data === YT.PlayerState.PLAYING) {
+        if (window.isHost) startHostHeartbeat();
+        if (lastState === 'PLAYING' && (now - lastSyncTime < 800)) return;
+        lastState = 'PLAYING';
+        lastSyncTime = now;
         if (window.broadcastSync) window.broadcastSync('PLAYING', player.getCurrentTime());
-    } else if (event.data == YT.PlayerState.PAUSED || event.data == YT.PlayerState.BUFFERING) {
+    } else if (event.data === YT.PlayerState.PAUSED) {
+        if (window.isHost) stopHostHeartbeat();
+        if (lastState === 'PAUSED' && (now - lastSyncTime < 800)) return;
+        lastState = 'PAUSED';
+        lastSyncTime = now;
         if (window.broadcastSync) window.broadcastSync('PAUSED', player.getCurrentTime());
     }
 }
 
 window.applyVideoSync = function(state, time) {
-    if (!player || !player.seekTo) return;
+    if (!player || typeof player.seekTo !== 'function') {
+        pendingSync = { state: state, time: time };
+        return;
+    }
     if (window.isHost && window.hostOnlyVideo) return; // Host ignores guests if restricted
 
-    remoteActionUntil = Date.now() + 1000; // Ignore local events for 1 second
-    
-    // If the time difference is greater than 1.5 seconds, scrub to sync
-    if (Math.abs(player.getCurrentTime() - time) > 1.5) {
-        player.seekTo(time, true);
-    }
-    
+    remoteActionUntil = Date.now() + 2000;
+
+    try {
+        const currentTime = player.getCurrentTime ? player.getCurrentTime() : 0;
+        if (Math.abs(currentTime - time) > 1.5) {
+            player.seekTo(time, true);
+        }
+    } catch(e) {}
+
     if (state === 'PLAYING') {
-        player.playVideo();
+        try {
+            player.playVideo();
+        } catch(e) {
+            try {
+                player.mute();
+                player.playVideo();
+            } catch(err) {}
+        }
     } else if (state === 'PAUSED') {
-        player.pauseVideo();
+        try {
+            player.pauseVideo();
+        } catch(e) {}
     }
 };
+
+// Global click listener to restore audio if muted by autoplay policies
+document.addEventListener('click', () => {
+    if (player && typeof player.isMuted === 'function' && player.isMuted()) {
+        try {
+            player.unMute();
+        } catch(e) {}
+    }
+});
 
 // Extract Video ID from URL
 function extractVideoID(url) {

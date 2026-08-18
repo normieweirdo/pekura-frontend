@@ -90,6 +90,11 @@ socket.on('connect', () => {
         if (res.currentVideoUrl && window.loadVideo) {
             document.getElementById('video-url').value = res.currentVideoUrl;
             window.loadVideo(res.currentVideoUrl);
+            if (res.videoState && window.applyVideoSync) {
+                setTimeout(() => {
+                    window.applyVideoSync(res.videoState, res.videoTime || 0);
+                }, 1000);
+            }
         }
         if (res.videoQueue) {
             updateQueueUI(res.videoQueue);
@@ -481,25 +486,6 @@ function generateAvatarGrid() {
     }
 }
 
-function createReactionMenu(msgId) {
-    const menu = document.createElement('div');
-    menu.classList.add('reaction-menu');
-    const emojis = [
-        { name: 'thumbsup', svg: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"></path></svg>' },
-        { name: 'heart', svg: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>' },
-        { name: 'smile', svg: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><path d="M8 14s1.5 2 4 2 4-2 4-2"></path><line x1="9" y1="9" x2="9.01" y2="9"></line><line x1="15" y1="9" x2="15.01" y2="9"></line></svg>' },
-        { name: 'star', svg: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>' }
-    ];
-    emojis.forEach(emoji => {
-        const btn = document.createElement('span');
-        btn.classList.add('reaction-btn');
-        btn.innerHTML = emoji.svg;
-        btn.onclick = () => sendReaction(msgId, emoji.name);
-        menu.appendChild(btn);
-    });
-    return menu;
-}
-
 function appendStructuredMessage(data, type = 'peer') {
     const msgDiv = document.createElement('div');
     msgDiv.classList.add('message', type);
@@ -537,15 +523,6 @@ function appendStructuredMessage(data, type = 'peer') {
         msgDiv.appendChild(textNode);
     }
 
-    // Reaction Bar
-    const reactionBar = document.createElement('div');
-    reactionBar.classList.add('reaction-bar');
-    reactionBar.id = `reactions-${data.id}`;
-    msgDiv.appendChild(reactionBar);
-
-    // Reaction Menu (only on hover)
-    msgDiv.appendChild(createReactionMenu(data.id));
-
     const myName = profileName.value.trim() || 'Guest';
     if (data.msgType === 'text' && data.text.includes(`@${myName}`)) {
         msgDiv.style.backgroundColor = 'rgba(245, 158, 11, 0.2)';
@@ -571,22 +548,6 @@ function appendSystemMessage(text) {
     sysDiv.textContent = text;
     chatMessages.appendChild(sysDiv);
     chatMessages.scrollTop = chatMessages.scrollHeight;
-}
-
-const reactionSvgs = {
-    'thumbsup': '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"></path></svg>',
-    'heart': '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>',
-    'smile': '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><path d="M8 14s1.5 2 4 2 4-2 4-2"></path><line x1="9" y1="9" x2="9.01" y2="9"></line><line x1="15" y1="9" x2="15.01" y2="9"></line></svg>',
-    'star': '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>'
-};
-
-function appendReaction(msgId, emojiName) {
-    const bar = document.getElementById(`reactions-${msgId}`);
-    if (bar && reactionSvgs[emojiName]) {
-        const span = document.createElement('span');
-        span.innerHTML = reactionSvgs[emojiName];
-        bar.appendChild(span);
-    }
 }
 
 function triggerConfetti() {
@@ -655,15 +616,6 @@ function sendStructuredMessage(text, msgType = 'text') {
     appendStructuredMessage(payload, 'self');
     socket.emit('broadcast', payload);
     chatInput.value = '';
-}
-
-function sendReaction(msgId, emoji) {
-    appendReaction(msgId, emoji);
-    socket.emit('broadcast', {
-        type: 'reaction',
-        msgId: msgId,
-        emoji: emoji
-    });
 }
 
 document.getElementById('send-chat-btn').addEventListener('click', () => {
@@ -750,8 +702,6 @@ socket.on('broadcast', data => {
     try {
         if (data.type === 'structured-chat') {
             appendStructuredMessage(data, 'peer');
-        } else if (data.type === 'reaction') {
-            appendReaction(data.msgId, data.emoji);
         } else if (data.type === 'confetti') {
             triggerConfetti();
         } else if (data.type === 'video-sync') {
