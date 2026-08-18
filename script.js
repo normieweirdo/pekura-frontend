@@ -179,4 +179,9 @@ document.addEventListener('mousemove', (e) => {
     videoWrapper.style.top = (initialY + dy) + 'px';
 });
 
+document.addEventListener('mouseup', () => {
+    if (isDragging) {
+        isDragging = false;
+        videoWrapper.classList.remove('dragging');
+    }
 });
