@@ -230,7 +230,7 @@ document.addEventListener('mouseup', () => {
                 grad.addColorStop(1, 'rgba(217, 70, 239, 0.1)');
                 ctx.strokeStyle = grad;
 
-                const centerY = height * 0.55;
+                const centerY = height * 0.35;
 
                 ctx.moveTo(-100, centerY);
                 for (let x = -100; x <= width + 100; x += 20) {
