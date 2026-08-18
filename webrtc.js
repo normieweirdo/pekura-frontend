@@ -1012,3 +1012,33 @@ if (copyInviteBtn) {
     });
 }
 
+// Hardware Acceleration & DRM Guide Modal Listeners
+const drmModal = document.getElementById('drm-modal');
+const drmInfoBtn = document.getElementById('drm-info-btn');
+const closeDrmModalBtn = document.getElementById('close-drm-modal-btn');
+const closeDrmModalX = document.getElementById('close-drm-modal-x');
+const copySettingsLinkBtn = document.getElementById('copy-settings-link-btn');
+
+function openDrmModal() {
+    if (drmModal) drmModal.style.display = 'flex';
+}
+
+function closeDrmModal() {
+    if (drmModal) drmModal.style.display = 'none';
+}
+
+if (drmInfoBtn) drmInfoBtn.addEventListener('click', openDrmModal);
+if (closeDrmModalBtn) closeDrmModalBtn.addEventListener('click', closeDrmModal);
+if (closeDrmModalX) closeDrmModalX.addEventListener('click', closeDrmModal);
+
+if (copySettingsLinkBtn) {
+    copySettingsLinkBtn.addEventListener('click', () => {
+        const text = "chrome://settings/system";
+        if (navigator.clipboard && window.isSecureContext) {
+            navigator.clipboard.writeText(text).then(() => alert("Copied 'chrome://settings/system' to clipboard!\n\nPaste it in your browser address bar to open Hardware Acceleration settings directly.")).catch(() => fallbackCopy(text));
+        } else {
+            fallbackCopy(text);
+        }
+    });
+}
+
