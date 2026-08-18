@@ -162,9 +162,15 @@ function makeDraggable(el) {
     });
 }
 
-function addVideoStream(video, stream, name) {
+function addVideoStream(video, stream, name, peerId = null) {
     const wrapper = document.createElement('div');
+    if (peerId) wrapper.dataset.peerId = peerId;
+    if (stream && stream.id) {
+        wrapper.id = 'webcam-' + stream.id;
+        wrapper.dataset.streamId = stream.id;
+    }
     if (name && name.includes('(Screen)')) {
+        wrapper.dataset.isScreen = 'true';
         wrapper.classList.add('webcam-wrapper', 'large');
     } else {
         wrapper.classList.add('webcam-wrapper', 'small');
@@ -329,7 +335,7 @@ socket.on('broadcast', data => {
         if (data.peerId !== peer.id) {
             const activeStream = myStream;
             const call = activeStream ? peer.call(data.peerId, activeStream) : peer.call(data.peerId);
-            if (call) handleCall(call, (data.senderName || "User") + " (Screen)");
+            if (call) handleCall(call, (data.senderName || "User") + " (Screen)", data.peerId);
             showScreenshareChatNotice(data);
         } else {
             appendSystemMessage("📺 You started sharing your screen.");
@@ -633,9 +639,10 @@ document.getElementById('toggle-mic-btn').addEventListener('click', async (e) =>
     }
 });
 
-function handleCall(call, defaultName = "Guest") {
+function handleCall(call, defaultName = "Guest", peerId = null) {
     currentCalls.push(call);
     const video = document.createElement('video');
+    const pId = peerId || (call ? call.peer : null);
     
     // Add error listener on the connection
     call.on('error', err => {
@@ -644,7 +651,7 @@ function handleCall(call, defaultName = "Guest") {
 
     call.on('stream', userVideoStream => {
         if (!document.getElementById('webcam-' + userVideoStream.id)) {
-            addVideoStream(video, userVideoStream, defaultName);
+            addVideoStream(video, userVideoStream, defaultName, pId);
         }
     });
 
@@ -654,7 +661,7 @@ function handleCall(call, defaultName = "Guest") {
                 const st = event.streams[0];
                 if (!document.getElementById('webcam-' + st.id)) {
                     const v = document.createElement('video');
-                    addVideoStream(v, st, defaultName);
+                    addVideoStream(v, st, defaultName, pId);
                 }
             }
         };
@@ -918,49 +925,73 @@ function removeScreenshareChatNotice(streamId) {
     });
 }
 
-function watchScreenshare(streamId, peerId, senderName) {
-    let screenCard = streamId ? document.getElementById('webcam-' + streamId) : null;
+function findScreenShareCard(streamId, peerId, senderName) {
+    if (streamId) {
+        let card = document.getElementById('webcam-' + streamId) ||
+                   document.querySelector(`.webcam-wrapper[data-stream-id="${streamId}"]`);
+        if (card) return card;
+    }
     
-    if (!screenCard) {
-        const wrappers = document.querySelectorAll('.webcam-wrapper');
-        for (let w of wrappers) {
-            const nameTag = w.querySelector('.webcam-name');
-            if (nameTag && nameTag.textContent.includes('(Screen)')) {
-                screenCard = w;
-                break;
-            }
-        }
+    let screenCard = document.querySelector('.webcam-wrapper[data-is-screen="true"]');
+    if (screenCard) return screenCard;
+
+    if (peerId) {
+        let card = document.querySelector(`.webcam-wrapper[data-peer-id="${peerId}"]`);
+        if (card) return card;
     }
 
-    if (screenCard) {
-        screenCard.style.display = 'flex';
-        screenCard.classList.remove('small');
-        screenCard.classList.add('large');
+    const wrappers = document.querySelectorAll('.webcam-wrapper');
+    for (let w of wrappers) {
+        const nameTag = w.querySelector('.webcam-name');
+        if (nameTag && (nameTag.textContent.includes('(Screen)') || (senderName && nameTag.textContent.includes(senderName)))) {
+            return w;
+        }
+    }
+    return null;
+}
 
-        screenCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
-
-        screenCard.classList.add('screenshare-focus-glow');
-        setTimeout(() => {
-            screenCard.classList.remove('screenshare-focus-glow');
-        }, 3500);
-    } else if (peerId && peerId !== peer.id) {
-        const activeStream = myStream;
-        const call = activeStream ? peer.call(peerId, activeStream) : peer.call(peerId);
-        if (call) {
-            handleCall(call, (senderName || "User") + " (Screen)");
-            call.on('stream', userVideoStream => {
-                setTimeout(() => {
-                    const newCard = document.getElementById('webcam-' + userVideoStream.id);
-                    if (newCard) {
-                        newCard.style.display = 'flex';
-                        newCard.classList.remove('small');
-                        newCard.classList.add('large');
-                        newCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                        newCard.classList.add('screenshare-focus-glow');
-                        setTimeout(() => newCard.classList.remove('screenshare-focus-glow'), 3500);
-                    }
-                }, 300);
+function watchScreenshare(streamId, peerId, senderName) {
+    const activateCard = (card) => {
+        if (!card) return;
+        card.style.display = 'flex';
+        card.dataset.isScreen = 'true';
+        
+        const videoEl = card.querySelector('video');
+        if (videoEl) {
+            videoEl.play().catch(err => {
+                videoEl.muted = true;
+                videoEl.play().catch(() => {});
             });
+        }
+
+        if (!card.classList.contains('card-full-viewport')) {
+            card.classList.add('card-full-viewport');
+            if (card.requestFullscreen) {
+                card.requestFullscreen().catch(() => {});
+            }
+        }
+        
+        card.classList.add('screenshare-focus-glow');
+        setTimeout(() => card.classList.remove('screenshare-focus-glow'), 3500);
+    };
+
+    let screenCard = findScreenShareCard(streamId, peerId, senderName);
+    if (screenCard) {
+        activateCard(screenCard);
+    } else {
+        const targetPeer = peerId || (window.currentRoomId ? window.currentRoomId : null);
+        if (targetPeer && targetPeer !== peer.id) {
+            const activeStream = myStream;
+            const call = activeStream ? peer.call(targetPeer, activeStream) : peer.call(targetPeer);
+            if (call) {
+                handleCall(call, (senderName || "User") + " (Screen)", targetPeer);
+                call.on('stream', userVideoStream => {
+                    setTimeout(() => {
+                        let newCard = findScreenShareCard(userVideoStream.id, targetPeer, senderName);
+                        if (newCard) activateCard(newCard);
+                    }, 300);
+                });
+            }
         }
     }
 }
