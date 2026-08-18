@@ -9,34 +9,55 @@ var isPlayerReady = false;
 
 // This function creates an <iframe> (and YouTube player)
 // after the API code downloads.
+var pendingVideoId = null;
+
 function onYouTubeIframeAPIReady() {
     isPlayerReady = true;
+    if (pendingVideoId) {
+        initPlayer(pendingVideoId);
+        pendingVideoId = null;
+    }
 }
 
 let pendingSync = null;
 
 function initPlayer(videoId) {
-    if (!isPlayerReady) return;
+    if (!videoId) return;
+    if (!isPlayerReady) {
+        pendingVideoId = videoId;
+        const checkReady = setInterval(() => {
+            if (window.YT && window.YT.Player) {
+                isPlayerReady = true;
+                clearInterval(checkReady);
+                initPlayer(videoId);
+            }
+        }, 100);
+        return;
+    }
 
     const wrapper = document.getElementById('player-container');
     wrapper.innerHTML = '<div id="ytplayer"></div>';
 
-    player = new YT.Player('ytplayer', {
-        height: '100%',
-        width: '100%',
-        videoId: videoId,
-        playerVars: {
-            'playsinline': 1,
-            'autoplay': 1,
-            'enablejsapi': 1,
-            'origin': window.location.origin,
-            'rel': 0
-        },
-        events: {
-            'onReady': onPlayerReady,
-            'onStateChange': onPlayerStateChange
-        }
-    });
+    try {
+        player = new YT.Player('ytplayer', {
+            height: '100%',
+            width: '100%',
+            videoId: videoId,
+            playerVars: {
+                'playsinline': 1,
+                'autoplay': 1,
+                'enablejsapi': 1,
+                'origin': window.location.origin,
+                'rel': 0
+            },
+            events: {
+                'onReady': onPlayerReady,
+                'onStateChange': onPlayerStateChange
+            }
+        });
+    } catch(e) {
+        console.error("Failed to create YT.Player", e);
+    }
 }
 
 function onPlayerReady(event) {
@@ -195,6 +216,50 @@ document.getElementById('load-btn').addEventListener('click', () => {
     
     window.loadVideo(url);
 });
+
+const syncPlayBtn = document.getElementById('sync-play-btn');
+const syncPauseBtn = document.getElementById('sync-pause-btn');
+const syncNowBtn = document.getElementById('sync-now-btn');
+
+if (syncPlayBtn) {
+    syncPlayBtn.addEventListener('click', () => {
+        if (!window.isHost && window.hostOnlyVideo) {
+            alert("The Host has restricted video controls to host-only.");
+            return;
+        }
+        if (player && typeof player.playVideo === 'function') {
+            try { player.playVideo(); } catch(e) {}
+        }
+        syncPlayBtn.classList.add('active');
+        if (syncPauseBtn) syncPauseBtn.classList.remove('active');
+        const curTime = (player && typeof player.getCurrentTime === 'function') ? player.getCurrentTime() : 0;
+        if (window.broadcastSync) window.broadcastSync('PLAYING', curTime);
+    });
+}
+
+if (syncPauseBtn) {
+    syncPauseBtn.addEventListener('click', () => {
+        if (!window.isHost && window.hostOnlyVideo) {
+            alert("The Host has restricted video controls to host-only.");
+            return;
+        }
+        if (player && typeof player.pauseVideo === 'function') {
+            try { player.pauseVideo(); } catch(e) {}
+        }
+        syncPauseBtn.classList.add('active');
+        if (syncPlayBtn) syncPlayBtn.classList.remove('active');
+        const curTime = (player && typeof player.getCurrentTime === 'function') ? player.getCurrentTime() : 0;
+        if (window.broadcastSync) window.broadcastSync('PAUSED', curTime);
+    });
+}
+
+if (syncNowBtn) {
+    syncNowBtn.addEventListener('click', () => {
+        if (window.requestSync) {
+            window.requestSync();
+        }
+    });
+}
 
 // Chat logic moved to webrtc.js for network synchronization
 

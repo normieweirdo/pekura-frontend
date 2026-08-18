@@ -342,6 +342,10 @@ window.broadcastSync = function(state, time) {
     });
 };
 
+window.requestSync = function() {
+    socket.emit('broadcast', { type: 'request-sync' });
+};
+
 document.getElementById('toggle-mic-btn').addEventListener('click', async (e) => {
     if (!myStream) await requestMedia();
     if (myStream) {
@@ -712,6 +716,11 @@ socket.on('broadcast', data => {
         } else if (data.type === 'video-state-sync') {
             if (window.applyVideoSync) {
                 window.applyVideoSync(data.state, data.time);
+            }
+        } else if (data.type === 'request-sync') {
+            if (isHost && typeof player !== 'undefined' && player && typeof player.getCurrentTime === 'function') {
+                const state = (typeof player.getPlayerState === 'function' && player.getPlayerState() === 1) ? 'PLAYING' : 'PAUSED';
+                if (window.broadcastSync) window.broadcastSync(state, player.getCurrentTime());
             }
         } else if (data.type === 'name-change') {
             const nameTags = document.querySelectorAll('.webcam-name');
