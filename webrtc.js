@@ -195,6 +195,35 @@ function addVideoStream(video, stream, name) {
             }
         }
     });
+
+    const fullscreenBtn = document.createElement('button');
+    fullscreenBtn.classList.add('webcam-fullscreen-btn');
+    fullscreenBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 3 21 3 21 9"></polyline><polyline points="9 21 3 21 3 15"></polyline><line x1="21" y1="3" x2="14" y2="10"></line><line x1="3" y1="21" x2="10" y2="14"></line></svg>`;
+    fullscreenBtn.title = 'View in Fullscreen Mode';
+
+    function toggleCardFullscreen() {
+        if (wrapper.classList.contains('card-full-viewport')) {
+            wrapper.classList.remove('card-full-viewport');
+            if (document.exitFullscreen && document.fullscreenElement) {
+                document.exitFullscreen().catch(() => {});
+            }
+        } else {
+            wrapper.classList.add('card-full-viewport');
+            if (wrapper.requestFullscreen) {
+                wrapper.requestFullscreen().catch(() => {});
+            }
+        }
+    }
+
+    fullscreenBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        toggleCardFullscreen();
+    });
+
+    wrapper.addEventListener('dblclick', (e) => {
+        e.stopPropagation();
+        toggleCardFullscreen();
+    });
     
     if (stream) {
         wrapper.id = 'webcam-' + stream.id;
@@ -218,6 +247,7 @@ function addVideoStream(video, stream, name) {
 
     wrapper.append(video);
     wrapper.append(nameTag);
+    wrapper.append(fullscreenBtn);
     wrapper.append(closeBtn);
     document.getElementById('webcams-container').append(wrapper);
     makeDraggable(wrapper);
