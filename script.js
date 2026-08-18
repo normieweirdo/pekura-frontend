@@ -206,42 +206,59 @@ window.applyVideoSync = function(state, time) {
     if (state === 'PLAYING') sendIframeCommand('playVideo');
     else if (state === 'PAUSED') sendIframeCommand('pauseVideo');
 
+    // Update StreamHG / Proxy Sync Controls Bar UI
+    const embedPlayBtn = document.getElementById('embed-play-btn');
+    const embedPauseBtn = document.getElementById('embed-pause-btn');
+
+    if (state === 'PLAYING') {
+        if (embedPlayBtn) embedPlayBtn.classList.add('active');
+        if (embedPauseBtn) embedPauseBtn.classList.remove('active');
+    } else if (state === 'PAUSED') {
+        if (embedPauseBtn) embedPauseBtn.classList.add('active');
+        if (embedPlayBtn) embedPlayBtn.classList.remove('active');
+    }
+
     setTimeout(() => {
         isApplyingRemoteSync = false;
     }, 500);
 };
 
-// Universal Iframe postMessage Relay (Recursively dispatches to all nested sub-frames!)
+// Universal Iframe postMessage Relay (Safely handles cross-origin sub-frames)
 function sendIframeCommand(command, arg) {
     const iframe = document.querySelector('#player-container iframe');
     if (!iframe || !iframe.contentWindow) return;
 
     const messages = [
         { event: 'command', func: command, args: arg !== undefined ? [arg] : [] },
+        { event: command },
         { method: command, value: arg },
         { type: command, data: arg },
         { action: command, value: arg },
         command
     ];
 
-    function postToWindow(win) {
-        if (!win) return;
-        messages.forEach(msg => {
-            try {
-                win.postMessage(typeof msg === 'object' ? JSON.stringify(msg) : msg, '*');
-                win.postMessage(msg, '*');
-            } catch(e) {}
-        });
-
-        // Recursively postMessage to all nested sub-iframes (handles iframe-within-iframe)
+    messages.forEach(msg => {
         try {
-            for (let i = 0; i < win.frames.length; i++) {
-                postToWindow(win.frames[i]);
-            }
+            iframe.contentWindow.postMessage(typeof msg === 'object' ? JSON.stringify(msg) : msg, '*');
         } catch(e) {}
-    }
+        try {
+            iframe.contentWindow.postMessage(msg, '*');
+        } catch(e) {}
+    });
 
-    postToWindow(iframe.contentWindow);
+    try {
+        if (iframe.contentWindow.length > 0) {
+            for (let i = 0; i < iframe.contentWindow.length; i++) {
+                try {
+                    const subWin = iframe.contentWindow[i];
+                    messages.forEach(msg => {
+                        try { subWin.postMessage(typeof msg === 'object' ? JSON.stringify(msg) : msg, '*'); } catch(e) {}
+                        try { subWin.postMessage(msg, '*'); } catch(e) {}
+                    });
+                } catch(e) {}
+            }
+        }
+    } catch(e) {}
 }
 
 // Cross-origin iframe postMessage Listener
