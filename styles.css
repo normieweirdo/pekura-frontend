@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700;900&display=swap');
 
 :root {
     --bg-dark: #040308;
@@ -20,7 +20,7 @@
 }
 
 body {
-    font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+    font-family: 'Roboto', system-ui, -apple-system, sans-serif;
     background: radial-gradient(ellipse at 50% -20%, #1e1b4b 0%, #0b0718 50%, #040308 100%);
     background-attachment: fixed;
     color: var(--text-main);
