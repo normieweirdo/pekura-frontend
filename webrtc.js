@@ -1,5 +1,5 @@
 const signalingServerUrl = 'https://pekura-backend.onrender.com';
-const socket = io(signalingServerUrl);
+const socket = (typeof io !== 'undefined') ? io(signalingServerUrl) : { on: () => {}, emit: () => {} };
 
 const urlParams = new URLSearchParams(window.location.search);
 const roomId = urlParams.get('room') ? urlParams.get('room').trim() : null;
