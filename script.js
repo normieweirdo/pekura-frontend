@@ -292,38 +292,63 @@ setInterval(() => {
     lastCheckTimestamp = now;
 }, 250);
 
-// Extract Video ID from URL
-function extractVideoID(url) {
-    var regExp = /^.*((youtu.be\/)|(v\/)|(\/u\/\w\/)|(embed\/)|(watch\?))\??v?=?([^#&?]*).*/;
-    var match = url.match(regExp);
-    return (match && match[7].length == 11) ? match[7] : false;
-}
+// Universal Multi-Platform URL Parser (YouTube, Vimeo, Dailymotion, Google Drive, MP4, HLS, Movie Embeds)
+function parsePlatformURL(url) {
+    if (!url) return { type: 'unknown', url: '' };
 
-// Un-proxy proxy.php links to direct player embed
-function extractDirectEmbedUrl(url) {
-    if (!url) return '';
+    // 1. YouTube
+    const ytMatch = url.match(/^.*((youtu.be\/)|(v\/)|(\/u\/\w\/)|(embed\/)|(watch\?))\??v?=?([^#&?]*).*/);
+    if (ytMatch && ytMatch[7].length === 11) {
+        return { type: 'youtube', id: ytMatch[7] };
+    }
+
+    // 2. Vimeo
+    const vimeoMatch = url.match(/(?:vimeo\.com\/)(\d+)/);
+    if (vimeoMatch && vimeoMatch[1]) {
+        return { type: 'embed', embedUrl: 'https://player.vimeo.com/video/' + vimeoMatch[1] + '?api=1' };
+    }
+
+    // 3. Dailymotion
+    const dmMatch = url.match(/(?:dailymotion\.com\/video\/|dai\.ly\/)([a-zA-Z0-9]+)/);
+    if (dmMatch && dmMatch[1]) {
+        return { type: 'embed', embedUrl: 'https://www.dailymotion.com/embed/video/' + dmMatch[1] };
+    }
+
+    // 4. StreamHG & Proxy.php Un-wrapper
     if (url.includes('proxy.php') && url.includes('c=')) {
         const match = url.match(/[?&]c=([a-zA-Z0-9]+)/);
         if (match && match[1]) {
-            return 'https://streamhg.com/e/' + match[1];
+            return { type: 'embed', embedUrl: 'https://streamhg.com/e/' + match[1] };
         }
     }
-    return url;
+
+    // 5. Direct Video Files (.mp4, .webm, .m3u8, Google Drive / Dropbox video)
+    const isDirectVideo = (/\.(mp4|webm|ogv|m3u8)(\?.*)?$/i).test(url) || url.includes('drive.google.com') || url.includes('dropbox.com');
+    if (isDirectVideo) {
+        let videoSrc = url;
+        if (url.includes('drive.google.com/file/d/')) {
+            const driveId = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
+            if (driveId && driveId[1]) videoSrc = 'https://drive.google.com/uc?export=download&id=' + driveId[1];
+        }
+        return { type: 'direct', videoUrl: videoSrc };
+    }
+
+    // 6. Generic Movie Embeds (Streamtape, Streamwish, Filemoon, Vidhide, Mixdrop, Voe, Vidsrc, etc.)
+    return { type: 'embed', embedUrl: url };
 }
 
 // Event Listeners for Video
 window.loadVideo = function(rawUrl) {
-    const url = extractDirectEmbedUrl(rawUrl);
-    const videoId = extractVideoID(url);
+    const platform = parsePlatformURL(rawUrl);
     const wrapper = document.getElementById('player-container');
     const embedSyncBar = document.getElementById('embed-sync-bar');
     
-    if (videoId) {
+    if (platform.type === 'youtube') {
         if (embedSyncBar) embedSyncBar.style.display = 'none';
         if (player && typeof player.destroy === 'function') {
             player.destroy();
         }
-        initPlayer(videoId);
+        initPlayer(platform.id);
     } else {
         if (player && typeof player.destroy === 'function') {
             player.destroy();
@@ -331,11 +356,10 @@ window.loadVideo = function(rawUrl) {
         }
         wrapper.innerHTML = '';
 
-        const isDirectVideo = (/\.(mp4|webm|ogv|m3u8)(\?.*)?$/i).test(url);
-        if (isDirectVideo) {
+        if (platform.type === 'direct') {
             if (embedSyncBar) embedSyncBar.style.display = 'none';
             const video = document.createElement('video');
-            video.src = url;
+            video.src = platform.videoUrl;
             video.controls = true;
             video.autoplay = true;
             video.style.width = '100%';
@@ -355,10 +379,10 @@ window.loadVideo = function(rawUrl) {
             });
             wrapper.appendChild(video);
         } else {
-            // StreamHG / Proxy / Third-Party iFrame Embed
+            // Vimeo, Dailymotion, StreamHG, Proxy, Streamtape, Vidhide, Filemoon, Voe, etc.
             if (embedSyncBar) embedSyncBar.style.display = 'flex';
             const iframe = document.createElement('iframe');
-            iframe.src = url;
+            iframe.src = platform.embedUrl;
             iframe.style.width = '100%';
             iframe.style.height = '100%';
             iframe.frameBorder = '0';
