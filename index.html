@@ -4,87 +4,115 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://unpkg.com https://cdn.socket.io https://cdnjs.cloudflare.com https://www.youtube.com https://s.ytimg.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; frame-src *; connect-src *; img-src * data:;">
-    <title>Pekura - Watch Together</title>
+    <title>Pekura — A new way to watch together</title>
     <script>
         window.onerror = function(msg, url, line, col, error) {
             alert("JS Error: " + msg + " at " + line + ":" + col);
         };
     </script>
     <link rel="stylesheet" href="styles.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 </head>
 <body>
+    <!-- Electric Light Ribbon Canvas Background -->
+    <canvas id="electric-waves-canvas"></canvas>
+
+    <!-- Floating Pill Header -->
+    <header class="navbar-pill">
+        <div class="brand-group">
+            <div class="logo-ring">
+                <span class="logo-core"></span>
+            </div>
+            <span class="brand-name">Pekura</span>
+            <span class="nav-tag">BETA</span>
+        </div>
+
+        <div class="navbar-right">
+            <div class="user-pill">
+                <img id="my-avatar" class="avatar-thumb" src="" title="Click to Change Avatar">
+                <input type="text" id="profile-name" value="Guest" autocomplete="off" class="profile-input-inline">
+            </div>
+            <div class="room-pill">
+                <span id="user-count" class="user-badge">1 online</span>
+                <button id="copy-invite-btn" class="pill-btn secondary">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                    Copy Room ID
+                </button>
+                <span id="room-status" class="status-indicator">Initializing...</span>
+                <div class="join-pill-group">
+                    <input type="text" id="join-room-input" placeholder="Join Room ID" class="join-pill-input">
+                    <button id="join-room-btn" class="pill-btn primary-green">Join</button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content App Shell -->
     <div class="app-container">
-        <header class="app-header">
-            <div class="brand-container">
-                <h1 class="brand-title">Pekura 
-                    <span class="badge badge-purple">BETA</span> 
-                    <span class="badge badge-green">AD-FREE</span>
-                </h1>
-                <p class="brand-subtitle">connecting people</p>
-            </div>
-            <div class="header-actions">
-                <div class="profile-card">
-                    <img id="my-avatar" class="avatar-img" src="" title="Change Avatar">
-                    <input type="text" id="profile-name" placeholder="Your Name" value="Guest" autocomplete="off" class="profile-input">
-                </div>
-                <div class="room-info">
-                    <span id="user-count" class="badge badge-orange">Users: 1</span>
-                    <button id="copy-invite-btn" class="secondary-btn">Copy Room ID</button>
-                    <span id="room-status" class="status-pill">Initializing...</span>
-                    <div class="join-group">
-                        <input type="text" id="join-room-input" placeholder="Paste Room ID" class="join-input">
-                        <button id="join-room-btn" class="join-btn">Join</button>
-                    </div>
-                </div>
-            </div>
-        </header>
+        <!-- Hero Tagline -->
+        <div class="hero-section">
+            <span class="hero-badge">WATCH TOGETHER IN REAL-TIME</span>
+            <h1 class="hero-title">A new way to watch and hang out with friends</h1>
+        </div>
 
         <main class="main-layout">
             <div class="left-panel">
-                <div class="input-section">
-                    <input type="text" id="video-url" placeholder="Paste YouTube link here..." autocomplete="off">
-                    <button id="load-btn" class="primary-btn">Play Now</button>
-                    <button id="queue-btn" class="secondary-btn">Add to Queue</button>
+                <!-- Sleek URL Input Bar -->
+                <div class="url-input-container">
+                    <svg class="url-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>
+                    <input type="text" id="video-url" placeholder="Enter your video URL to watch together..." autocomplete="off">
+                    <div class="url-actions">
+                        <button id="queue-btn" class="pill-btn secondary">Add to Queue</button>
+                        <button id="load-btn" class="pill-btn primary">
+                            Play Video
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                        </button>
+                    </div>
                 </div>
 
+                <!-- Video Container -->
                 <div class="video-container" id="video-wrapper">
                     <div class="drag-handle" id="drag-handle" title="Drag to move">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="12" r="1"></circle><circle cx="9" cy="5" r="1"></circle><circle cx="9" cy="19" r="1"></circle><circle cx="15" cy="12" r="1"></circle><circle cx="15" cy="5" r="1"></circle><circle cx="15" cy="19" r="1"></circle></svg>
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="12" r="1"></circle><circle cx="9" cy="5" r="1"></circle><circle cx="9" cy="19" r="1"></circle><circle cx="15" cy="12" r="1"></circle><circle cx="15" cy="5" r="1"></circle><circle cx="15" cy="19" r="1"></circle></svg>
                     </div>
                     <div class="iframe-overlay"></div>
                     <div id="player-container">
                         <div class="placeholder">
-                            <p>No video loaded. Paste a URL to begin.</p>
+                            <div class="placeholder-icon">
+                                <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                            </div>
+                            <p>No video loaded. Paste a URL above to begin.</p>
                         </div>
                     </div>
                 </div>
                 
+                <!-- Media Action Bar -->
                 <div class="media-controls" id="media-controls">
-                    <button id="toggle-camera-btn" class="media-btn">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
+                    <button id="toggle-camera-btn" class="pill-control-btn">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
                         <span>Enable Camera</span>
                     </button>
-                    <button id="toggle-mic-btn" class="media-btn">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg>
+                    <button id="toggle-mic-btn" class="pill-control-btn">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg>
                         <span>Enable Mic</span>
                     </button>
-                    <button id="screenshare-btn" class="media-btn media-btn-blue">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>
+                    <button id="screenshare-btn" class="pill-control-btn blue">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>
                         <span>Share Screen</span>
                     </button>
                     <div id="host-controls" class="host-controls-wrapper" style="display: none;">
-                        <button id="host-panel-btn" class="media-btn media-btn-red">
-                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+                        <button id="host-panel-btn" class="pill-control-btn red">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
                             <span>Host Panel</span>
                         </button>
                     </div>
                 </div>
                 
+                <!-- Queue Panel -->
                 <div class="video-queue-panel">
                     <div class="queue-header">
                         <h3>Up Next</h3>
-                        <button id="play-next-btn" class="secondary-btn" style="display: none;">Play Next</button>
+                        <button id="play-next-btn" class="pill-btn secondary" style="display: none;">Play Next</button>
                     </div>
                     <ul id="queue-list" class="queue-list">
                         <li class="empty-queue">Queue is empty</li>
@@ -92,6 +120,7 @@
                 </div>
             </div>
 
+            <!-- Chat Sidebar -->
             <div class="right-panel">
                 <div class="chat-container">
                     <div class="chat-header">
@@ -102,9 +131,9 @@
                     </div>
                     <div id="typing-indicator" class="typing-indicator">Someone is typing...</div>
                     <div class="chat-input-wrapper">
-                        <input type="text" id="chat-input" placeholder="Type a message or GIF URL..." autocomplete="off">
-                        <button id="gif-menu-btn" class="secondary-btn" title="Send GIF">GIF</button>
-                        <button id="send-chat-btn" class="primary-btn">Send</button>
+                        <input type="text" id="chat-input" placeholder="Type a message..." autocomplete="off">
+                        <button id="gif-menu-btn" class="pill-btn secondary" title="Send GIF">GIF</button>
+                        <button id="send-chat-btn" class="pill-btn primary">Send</button>
                         
                         <div id="gif-picker" class="gif-picker-modal">
                             <input type="text" id="gif-search-input" placeholder="Search Giphy..." autocomplete="off">
@@ -120,7 +149,7 @@
             </div>
         </main>
     </div>
-    
+
     <!-- Host Modal -->
     <div id="host-modal" class="modal-overlay">
         <div class="modal-card">
@@ -138,7 +167,7 @@
                 <li class="empty-list">No guests yet...</li>
             </ul>
             <div class="modal-actions">
-                <button id="close-host-modal" class="primary-btn">Done</button>
+                <button id="close-host-modal" class="pill-btn primary">Done</button>
             </div>
         </div>
     </div>
@@ -151,8 +180,8 @@
                 <!-- Avatars injected via JS -->
             </div>
             <div class="modal-actions-between">
-                <button id="shuffle-avatars-btn" class="secondary-btn">Shuffle</button>
-                <button id="close-avatar-modal" class="primary-btn">Close</button>
+                <button id="shuffle-avatars-btn" class="pill-btn secondary">Shuffle</button>
+                <button id="close-avatar-modal" class="pill-btn primary">Close</button>
             </div>
         </div>
     </div>
@@ -160,7 +189,7 @@
     <!-- Webcams Container -->
     <div id="webcams-container"></div>
     
-    <!-- Socket.io & PeerJS -->
+    <!-- Scripts -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.min.js"></script>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <script src="script.js"></script>

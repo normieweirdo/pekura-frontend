@@ -186,79 +186,63 @@ document.addEventListener('mouseup', () => {
     }
 });
 
-// Crisp Field of Blinking Dots Background Component
-(function initBlinkingDots() {
+// Electric Liquid Light Ribbon Canvas Background (Mimics exact video reference)
+(function initElectricWaves() {
     function setupCanvas() {
-        let canvas = document.getElementById('blinking-dots-canvas');
+        let canvas = document.getElementById('electric-waves-canvas');
         if (!canvas) {
             canvas = document.createElement('canvas');
-            canvas.id = 'blinking-dots-canvas';
-            canvas.style.cssText = 'position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; pointer-events: none; z-index: -1;';
+            canvas.id = 'electric-waves-canvas';
+            canvas.style.cssText = 'position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; pointer-events: none; z-index: -2; background: #040308;';
             document.body.prepend(canvas);
         }
 
         const ctx = canvas.getContext('2d');
-        let width, height;
-        let dots = [];
-        const spacing = 28; // Grid spacing in pixels
-        const dotRadius = 1.5;
+        let width, height, tick = 0;
 
         function resize() {
             width = canvas.width = window.innerWidth;
             height = canvas.height = window.innerHeight;
-            createGrid();
         }
 
-        function createGrid() {
-            dots = [];
-            const cols = Math.ceil(width / spacing);
-            const rows = Math.ceil(height / spacing);
-
-            for (let r = 0; r < rows; r++) {
-                for (let c = 0; c < cols; c++) {
-                    dots.push({
-                        x: c * spacing + spacing / 2,
-                        y: r * spacing + spacing / 2,
-                        baseAlpha: Math.random() * 0.08 + 0.04,
-                        currentAlpha: Math.random() * 0.1,
-                        targetAlpha: Math.random() * 0.08,
-                        speed: 0.005 + Math.random() * 0.015,
-                        color: Math.random() > 0.3 ? '139, 92, 246' : '244, 63, 94' // Purple & Rose accent dots
-                    });
-                }
-            }
-        }
+        const curves = [
+            { color: 'rgba(59, 130, 246, 0.45)', width: 120, speed: 0.008, freq: 0.0015, amp: 180, offset: 0 },
+            { color: 'rgba(139, 92, 246, 0.4)', width: 90, speed: 0.012, freq: 0.002, amp: 140, offset: 2 },
+            { color: 'rgba(236, 72, 153, 0.35)', width: 70, speed: 0.006, freq: 0.0012, amp: 200, offset: 4 },
+            { color: 'rgba(99, 102, 241, 0.3)', width: 150, speed: 0.01, freq: 0.001, amp: 220, offset: 1 }
+        ];
 
         function animate() {
-            ctx.clearRect(0, 0, width, height);
+            ctx.fillStyle = 'rgba(4, 3, 8, 0.25)';
+            ctx.fillRect(0, 0, width, height);
 
-            for (let i = 0; i < dots.length; i++) {
-                const d = dots[i];
-                
-                if (Math.abs(d.currentAlpha - d.targetAlpha) < 0.01) {
-                    if (Math.random() < 0.02) { // 2% chance per frame to start blinking
-                        d.targetAlpha = 0.4 + Math.random() * 0.45;
-                        d.speed = 0.01 + Math.random() * 0.025;
-                    } else {
-                        d.targetAlpha = d.baseAlpha;
-                    }
-                }
+            ctx.globalCompositeOperation = 'lighter';
 
-                d.currentAlpha += (d.targetAlpha - d.currentAlpha) * d.speed;
+            tick++;
 
+            curves.forEach(c => {
                 ctx.beginPath();
-                ctx.arc(d.x, d.y, dotRadius, 0, Math.PI * 2);
-                ctx.fillStyle = `rgba(${d.color}, ${d.currentAlpha})`;
-                ctx.fill();
+                ctx.lineWidth = c.width;
+                
+                const grad = ctx.createLinearGradient(0, 0, width, height);
+                grad.addColorStop(0, 'rgba(14, 165, 233, 0.1)');
+                grad.addColorStop(0.5, c.color);
+                grad.addColorStop(1, 'rgba(217, 70, 239, 0.1)');
+                ctx.strokeStyle = grad;
 
-                if (d.currentAlpha > 0.35) {
-                    ctx.beginPath();
-                    ctx.arc(d.x, d.y, dotRadius * 2.5, 0, Math.PI * 2);
-                    ctx.fillStyle = `rgba(${d.color}, ${d.currentAlpha * 0.25})`;
-                    ctx.fill();
+                const centerY = height * 0.55;
+
+                ctx.moveTo(-100, centerY);
+                for (let x = -100; x <= width + 100; x += 20) {
+                    const y = centerY + 
+                        Math.sin(x * c.freq + tick * c.speed + c.offset) * c.amp +
+                        Math.cos(x * 0.0008 + tick * 0.005) * 60;
+                    ctx.lineTo(x, y);
                 }
-            }
+                ctx.stroke();
+            });
 
+            ctx.globalCompositeOperation = 'source-over';
             requestAnimationFrame(animate);
         }
 
