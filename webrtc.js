@@ -301,11 +301,11 @@ async function stopScreenShare() {
 
 // Broadcast Video Sync State (used by script.js)
 window.broadcastSync = function(state, time) {
-    connections.forEach(conn => conn.send({ 
+    socket.emit('broadcast', { 
         type: 'video-state-sync', 
         state: state, 
         time: time 
-    }));
+    });
 };
 
 document.getElementById('toggle-mic-btn').addEventListener('click', async (e) => {
