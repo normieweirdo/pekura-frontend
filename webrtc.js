@@ -362,16 +362,26 @@ document.getElementById('screenshare-btn').addEventListener('click', async () =>
                 myStream.addTrack(screenTrack);
             }
 
-            // Replace track across all active WebRTC peer connections
+            // Replace track across all active WebRTC peer connections or add track
             currentCalls.forEach(call => {
                 if (call.peerConnection) {
                     const senders = call.peerConnection.getSenders();
                     const videoSender = senders.find(s => s.track && s.track.kind === 'video');
                     if (videoSender) {
-                        videoSender.replaceTrack(screenTrack);
+                        videoSender.replaceTrack(screenTrack).catch(e => console.error("replaceTrack error:", e));
+                    } else {
+                        try {
+                            call.peerConnection.addTrack(screenTrack, displayStream);
+                        } catch(e) {}
                     }
                 }
             });
+
+            // Call room host directly with displayStream so host receives screen share instantly
+            if (!isHost) {
+                const screenCall = peer.call(currentRoomId, displayStream);
+                if (screenCall) handleCall(screenCall, document.getElementById('profile-name').value + " (Screen)");
+            }
 
             // Hide local screen share preview card on presenter's DOM to eliminate infinite mirror loop!
             const myWrapper = document.getElementById('webcam-' + myStream.id);
@@ -583,6 +593,18 @@ function handleCall(call, defaultName = "Guest") {
             addVideoStream(video, userVideoStream, defaultName);
         }
     });
+
+    if (call.peerConnection) {
+        call.peerConnection.ontrack = (event) => {
+            if (event.streams && event.streams[0]) {
+                const st = event.streams[0];
+                if (!document.getElementById('webcam-' + st.id)) {
+                    const v = document.createElement('video');
+                    addVideoStream(v, st, defaultName);
+                }
+            }
+        };
+    }
 }
 
 // Peer connection handling
@@ -593,7 +615,7 @@ peer.on('connection', conn => {
 });
 
 peer.on('call', call => {
-    call.answer(myStream); 
+    call.answer(myStream || undefined); 
     handleCall(call, "Guest");
 });
 
