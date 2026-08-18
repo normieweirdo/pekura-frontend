@@ -52,7 +52,8 @@ window.onerror = function(msg, url, lineNo, columnNo, error) {
 
 socket.on('connect', () => {
     document.getElementById('room-status').textContent = "Socket connected. Joining room...";
-    socket.emit('join_room', { roomId: currentRoomId, isHost: isHost }, (res) => {
+    const username = document.getElementById('profile-name') ? document.getElementById('profile-name').value.trim() || 'Guest' : 'Guest';
+    socket.emit('join_room', { roomId: currentRoomId, isHost: isHost, username: username }, (res) => {
         if (!res.success) {
             alert(res.error);
             window.location.href = window.location.href.split('?')[0];
@@ -523,6 +524,14 @@ function appendStructuredMessage(data, type = 'peer') {
     chatMessages.scrollTop = chatMessages.scrollHeight;
 }
 
+function appendSystemMessage(text) {
+    const sysDiv = document.createElement('div');
+    sysDiv.classList.add('message', 'system');
+    sysDiv.textContent = text;
+    chatMessages.appendChild(sysDiv);
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+
 const reactionSvgs = {
     'thumbsup': '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"></path></svg>',
     'heart': '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>',
@@ -731,6 +740,10 @@ socket.on('broadcast', data => {
             window.location.href = window.location.href.split('?')[0];
         } else if (data.type === 'queue-sync') {
             updateQueueUI(data.queue);
+        } else if (data.type === 'user-joined') {
+            appendSystemMessage(`👋 ${data.name} joined the room!`);
+        } else if (data.type === 'user-left') {
+            appendSystemMessage(`👋 ${data.name} left the room.`);
         }
     } catch (error) {
         console.error("Failed to process peer data safely", error);
