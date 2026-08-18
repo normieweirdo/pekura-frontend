@@ -232,11 +232,9 @@ async function requestMedia() {
             handleCall(call, "Host");
         }
         
-        // Notify others of our peer ID for webcams
-        peer.on('open', (id) => {
-            socket.emit('broadcast', { type: 'peer-id', peerId: id, isHost: isHost });
-        });
-        
+        if (peer && peer.id) {
+            socket.emit('broadcast', { type: 'peer-id', peerId: peer.id, isHost: isHost });
+        }
         return myStream;
     } catch (err) {
         console.error('Failed to get local stream', err);
@@ -265,14 +263,29 @@ document.getElementById('toggle-camera-btn').addEventListener('click', async (e)
             await stopScreenShare();
         }
         videoEnabled = !videoEnabled;
-        myStream.getVideoTracks()[0].enabled = videoEnabled;
+        if (myStream.getVideoTracks().length > 0) {
+            myStream.getVideoTracks()[0].enabled = videoEnabled;
+        }
         const btn = document.getElementById('toggle-camera-btn');
-        btn.querySelector('span').textContent = videoEnabled ? "Disable Camera" : "Enable Camera";
+        btn.querySelector('span').textContent = videoEnabled ? "Disable Camera" : "Camera";
         btn.classList.toggle('active', videoEnabled);
+        
+        const webcamsContainer = document.getElementById('webcams-container');
+        const videoWrapper = document.getElementById('video-wrapper');
+        
+        if (videoEnabled && videoWrapper && webcamsContainer.parentNode !== videoWrapper) {
+            videoWrapper.appendChild(webcamsContainer);
+            webcamsContainer.classList.add('overlay-mode');
+        }
         
         const myWrapper = document.getElementById('webcam-' + myStream.id);
         if (myWrapper) {
             myWrapper.style.display = videoEnabled ? 'flex' : 'none';
+            if (videoEnabled) {
+                myWrapper.style.top = '15px';
+                myWrapper.style.right = '15px';
+                myWrapper.style.left = 'auto';
+            }
         }
     }
 });
