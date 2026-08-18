@@ -160,7 +160,7 @@ function addVideoStream(video, stream, name) {
     wrapper.classList.add('webcam-wrapper', 'small');
     
     wrapper.addEventListener('click', (e) => {
-        if (wrapper.style.cursor === 'grabbing') return;
+        if (wrapper.style.cursor === 'grabbing' || e.target.classList.contains('webcam-close-btn')) return;
         wrapper.classList.toggle('small');
         wrapper.classList.toggle('large');
     });
@@ -173,6 +173,24 @@ function addVideoStream(video, stream, name) {
     const nameTag = document.createElement('div');
     nameTag.classList.add('webcam-name');
     nameTag.textContent = name;
+
+    const closeBtn = document.createElement('button');
+    closeBtn.classList.add('webcam-close-btn');
+    closeBtn.innerHTML = '&times;';
+    closeBtn.title = 'Close video box';
+    closeBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        wrapper.style.display = 'none';
+        if (myStream && stream === myStream && videoEnabled) {
+            videoEnabled = false;
+            myStream.getVideoTracks()[0].enabled = false;
+            const btn = document.getElementById('toggle-camera-btn');
+            if (btn) {
+                btn.querySelector('span').textContent = "Enable Camera";
+                btn.classList.remove('active');
+            }
+        }
+    });
     
     if (stream) {
         wrapper.id = 'webcam-' + stream.id;
@@ -187,6 +205,7 @@ function addVideoStream(video, stream, name) {
 
     wrapper.append(video);
     wrapper.append(nameTag);
+    wrapper.append(closeBtn);
     document.getElementById('webcams-container').append(wrapper);
     makeDraggable(wrapper);
 }
@@ -196,8 +215,13 @@ async function requestMedia() {
     try {
         myStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
         
-        const myVideo = document.createElement('video');
-        addVideoStream(myVideo, myStream, document.getElementById('profile-name').value);
+        const myWrapper = myStream ? document.getElementById('webcam-' + myStream.id) : null;
+        if (myWrapper) {
+            myWrapper.style.display = 'flex';
+        } else {
+            const myVideo = document.createElement('video');
+            addVideoStream(myVideo, myStream, document.getElementById('profile-name').value);
+        }
 
         if (!isHost) {
             const call = peer.call(currentRoomId, myStream);
@@ -241,6 +265,11 @@ document.getElementById('toggle-camera-btn').addEventListener('click', async (e)
         const btn = document.getElementById('toggle-camera-btn');
         btn.querySelector('span').textContent = videoEnabled ? "Disable Camera" : "Enable Camera";
         btn.classList.toggle('active', videoEnabled);
+        
+        const myWrapper = document.getElementById('webcam-' + myStream.id);
+        if (myWrapper) {
+            myWrapper.style.display = videoEnabled ? 'flex' : 'none';
+        }
     }
 });
 
