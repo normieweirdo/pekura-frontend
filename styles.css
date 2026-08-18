@@ -78,6 +78,50 @@ body {
     -webkit-text-fill-color: transparent;
 }
 
+.brand-text-group {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.signature-badge {
+    font-size: 0.68rem;
+    color: #94a3b8;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin-top: -2px;
+}
+
+.signature-badge strong {
+    color: #10b981;
+    font-weight: 700;
+}
+
+.app-footer {
+    width: 100%;
+    text-align: center;
+    padding: 24px 10px 10px 10px;
+    margin-top: 20px;
+}
+
+.footer-signature {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(16, 185, 129, 0.08);
+    border: 1px solid rgba(16, 185, 129, 0.25);
+    padding: 8px 18px;
+    border-radius: 9999px;
+    font-size: 0.78rem;
+    color: #94a3b8;
+}
+
+.footer-signature strong {
+    color: #10b981;
+    font-weight: 700;
+}
+
 .nav-tag {
     font-size: 0.65rem;
     font-weight: 700;

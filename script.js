@@ -1,3 +1,34 @@
+/* =========================================================================
+   AUTHENTIC DIGITAL SIGNATURE & ANTI-PHISHING LOCK
+   Author: Samir Das
+   Official Domain: https://pekura.vercel.app
+   Signature ID: SAMIR-DAS-VERIFIED-AUTH-2026
+   ========================================================================= */
+(function enforceAntiPhishingDomainLock() {
+    const allowedDomains = ['pekura.vercel.app', 'pekura-frontend.vercel.app', 'localhost', '127.0.0.1'];
+    const hostname = window.location.hostname;
+
+    const isGenuine = allowedDomains.some(d => hostname.includes(d));
+
+    if (!isGenuine) {
+        window.addEventListener('DOMContentLoaded', () => {
+            document.body.innerHTML = `
+                <div style="background:#090714; color:#fff; height:100vh; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; font-family:'Plus Jakarta Sans', sans-serif; padding:20px;">
+                    <div style="background:rgba(239, 68, 68, 0.12); border:1px solid #ef4444; padding:32px; border-radius:24px; max-width:540px; box-shadow:0 20px 50px rgba(0,0,0,0.8);">
+                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2" style="margin-bottom:15px;"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+                        <h1 style="color:#f8fafc; font-size:1.5rem; margin-bottom:12px;">⚠️ Phishing & Clone Warning</h1>
+                        <p style="color:#94a3b8; font-size:0.9rem; line-height:1.6; margin-bottom:24px;">
+                            This website is an unauthorized clone or mirror of <strong>Pekura</strong>.<br>
+                            Digital Signature Verification failed for author <strong>Samir Das</strong>.
+                        </p>
+                        <a href="https://pekura.vercel.app" style="display:inline-block; background:linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); color:#fff; padding:14px 28px; border-radius:9999px; text-decoration:none; font-weight:700; font-size:0.9rem; box-shadow:0 10px 25px rgba(99, 102, 241, 0.4);">Go to Official Website (pekura.vercel.app)</a>
+                    </div>
+                </div>
+            `;
+        });
+    }
+})();
+
 // Load the YouTube IFrame Player API code asynchronously.
 var tag = document.createElement('script');
 tag.src = "https://www.youtube.com/iframe_api";
