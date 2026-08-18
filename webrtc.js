@@ -233,7 +233,10 @@ function addVideoStream(video, stream, name) {
         wrapper.id = 'webcam-' + stream.id;
     }
 
+    wrapper.style.display = 'flex';
     video.srcObject = stream;
+    video.autoplay = true;
+    video.playsInline = true;
     video.addEventListener('loadedmetadata', () => {
         video.play().catch(() => {});
     });
@@ -642,7 +645,7 @@ peer.on('connection', conn => {
 });
 
 peer.on('call', call => {
-    call.answer(myStream || undefined); 
+    call.answer(currentScreenStream || myStream || undefined); 
     handleCall(call, "Guest");
 });
 
