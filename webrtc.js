@@ -80,7 +80,6 @@ socket.on('connect', () => {
             status.textContent = "Hosting Room: " + currentRoomId;
         } else {
             status.textContent = "Connected to Room";
-            inviteBtn.style.display = 'none';
             if (joinBtn) {
                 joinBtn.style.display = 'none';
                 document.getElementById('join-room-input').style.display = 'none';
