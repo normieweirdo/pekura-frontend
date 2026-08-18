@@ -211,7 +211,7 @@ window.applyVideoSync = function(state, time) {
     }, 500);
 };
 
-// Universal Iframe postMessage Relay (for StreamHG, Proxy.php, Vidplay, JWPlayer)
+// Universal Iframe postMessage Relay (Recursively dispatches to all nested sub-frames!)
 function sendIframeCommand(command, arg) {
     const iframe = document.querySelector('#player-container iframe');
     if (!iframe || !iframe.contentWindow) return;
@@ -224,12 +224,24 @@ function sendIframeCommand(command, arg) {
         command
     ];
 
-    messages.forEach(msg => {
+    function postToWindow(win) {
+        if (!win) return;
+        messages.forEach(msg => {
+            try {
+                win.postMessage(typeof msg === 'object' ? JSON.stringify(msg) : msg, '*');
+                win.postMessage(msg, '*');
+            } catch(e) {}
+        });
+
+        // Recursively postMessage to all nested sub-iframes (handles iframe-within-iframe)
         try {
-            iframe.contentWindow.postMessage(typeof msg === 'object' ? JSON.stringify(msg) : msg, '*');
-            iframe.contentWindow.postMessage(msg, '*');
+            for (let i = 0; i < win.frames.length; i++) {
+                postToWindow(win.frames[i]);
+            }
         } catch(e) {}
-    });
+    }
+
+    postToWindow(iframe.contentWindow);
 }
 
 // Cross-origin iframe postMessage Listener
@@ -287,8 +299,21 @@ function extractVideoID(url) {
     return (match && match[7].length == 11) ? match[7] : false;
 }
 
+// Un-proxy proxy.php links to direct player embed
+function extractDirectEmbedUrl(url) {
+    if (!url) return '';
+    if (url.includes('proxy.php') && url.includes('c=')) {
+        const match = url.match(/[?&]c=([a-zA-Z0-9]+)/);
+        if (match && match[1]) {
+            return 'https://streamhg.com/e/' + match[1];
+        }
+    }
+    return url;
+}
+
 // Event Listeners for Video
-window.loadVideo = function(url) {
+window.loadVideo = function(rawUrl) {
+    const url = extractDirectEmbedUrl(rawUrl);
     const videoId = extractVideoID(url);
     const wrapper = document.getElementById('player-container');
     const embedSyncBar = document.getElementById('embed-sync-bar');
