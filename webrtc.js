@@ -101,9 +101,6 @@ socket.on('connect', () => {
         if (res.chatHistory && res.chatHistory.length > 0) {
             res.chatHistory.forEach(msg => appendStructuredMessage(msg, 'peer'));
         }
-        if (res.activeScreenShare && res.activeScreenShare.peerId !== peer.id) {
-            showScreenshareChatNotice(res.activeScreenShare);
-        }
         window.hostOnlyVideo = res.hostOnlyVideo;
     });
 });
@@ -321,30 +318,13 @@ async function requestMedia() {
     }
 }
 
-let currentScreenStream = null;
-
-// Socket listener for dynamic webcams and screenshares
+// Socket listener for dynamic webcams
 socket.on('broadcast', data => {
     if (data.type === 'peer-id') {
         if (isHost && !data.isHost && data.peerId !== peer.id) {
-            const activeStream = currentScreenStream || myStream;
-            const call = activeStream ? peer.call(data.peerId, activeStream) : peer.call(data.peerId);
-            if (call) handleCall(call, "Guest");
-        }
-    } else if (data.type === 'screenshare-started') {
-        if (data.peerId !== peer.id) {
             const activeStream = myStream;
             const call = activeStream ? peer.call(data.peerId, activeStream) : peer.call(data.peerId);
-            if (call) handleCall(call, (data.senderName || "User") + " (Screen)", data.peerId);
-            showScreenshareChatNotice(data);
-        } else {
-            appendSystemMessage("📺 You started sharing your screen.");
-        }
-    } else if (data.type === 'screenshare-stopped') {
-        removeScreenshareChatNotice(data.streamId);
-        if (data.streamId) {
-            const card = document.getElementById('webcam-' + data.streamId);
-            if (card) card.remove();
+            if (call) handleCall(call, "Guest");
         }
     }
 });
@@ -356,9 +336,6 @@ let audioEnabled = false;
 document.getElementById('toggle-camera-btn').addEventListener('click', async (e) => {
     if (!myStream) await requestMedia();
     if (myStream) {
-        if (isScreenSharing) {
-            await stopScreenShare();
-        }
         videoEnabled = !videoEnabled;
         if (myStream.getVideoTracks().length > 0) {
             myStream.getVideoTracks()[0].enabled = videoEnabled;
@@ -386,112 +363,6 @@ document.getElementById('toggle-camera-btn').addEventListener('click', async (e)
         }
     }
 });
-
-let isScreenSharing = false;
-
-document.getElementById('screenshare-btn').addEventListener('click', async () => {
-    if (isScreenSharing) {
-        await stopScreenShare();
-    } else {
-        try {
-            const displayStream = await navigator.mediaDevices.getDisplayMedia({ 
-                video: { cursor: "always" }, 
-                audio: true 
-            });
-            const screenTrack = displayStream.getVideoTracks()[0];
-            
-            if (!myStream) {
-                myStream = displayStream;
-                const myVideo = document.createElement('video');
-                addVideoStream(myVideo, myStream, document.getElementById('profile-name').value + " (Screen)");
-            } else {
-                const oldTracks = myStream.getVideoTracks();
-                if (oldTracks.length > 0) {
-                    oldTracks.forEach(t => t.stop());
-                    myStream.removeTrack(oldTracks[0]);
-                }
-                myStream.addTrack(screenTrack);
-            }
-
-            currentScreenStream = displayStream;
-
-            // Emit Socket broadcast to room so all remote peers connect to this screen share stream immediately
-            if (peer && peer.id) {
-                socket.emit('broadcast', { 
-                    type: 'screenshare-started', 
-                    peerId: peer.id, 
-                    streamId: displayStream.id,
-                    senderName: document.getElementById('profile-name').value
-                });
-            }
-
-            // Replace track across all active WebRTC peer connections or add track
-            currentCalls.forEach(call => {
-                if (call.peerConnection) {
-                    const senders = call.peerConnection.getSenders();
-                    const videoSender = senders.find(s => s.track && s.track.kind === 'video');
-                    if (videoSender) {
-                        videoSender.replaceTrack(screenTrack).catch(e => console.error("replaceTrack error:", e));
-                    } else {
-                        try {
-                            call.peerConnection.addTrack(screenTrack, displayStream);
-                        } catch(e) {}
-                    }
-                }
-            });
-
-            // Call room host directly with displayStream so host receives screen share instantly
-            if (!isHost) {
-                const screenCall = peer.call(currentRoomId, displayStream);
-                if (screenCall) handleCall(screenCall, document.getElementById('profile-name').value + " (Screen)");
-            }
-
-            // Hide local screen share preview card on presenter's DOM to eliminate infinite mirror loop!
-            const myWrapper = myStream ? document.getElementById('webcam-' + myStream.id) : null;
-            if (myWrapper) {
-                myWrapper.style.display = 'none';
-            }
-
-            isScreenSharing = true;
-            const btn = document.getElementById('screenshare-btn');
-            btn.classList.add('active');
-            btn.querySelector('span').textContent = "Stop Screen";
-
-            screenTrack.onended = () => {
-                stopScreenShare();
-            };
-        } catch (err) {
-            console.error("Screen share failed", err);
-        }
-    }
-});
-
-async function stopScreenShare() {
-    if (!isScreenSharing) return;
-    try {
-        if (currentScreenStream) {
-            const tracks = currentScreenStream.getTracks();
-            tracks.forEach(t => t.stop());
-            if (peer && peer.id) {
-                socket.emit('broadcast', { 
-                    type: 'screenshare-stopped', 
-                    peerId: peer.id, 
-                    streamId: currentScreenStream.id 
-                });
-            }
-            currentScreenStream = null;
-        }
-
-        isScreenSharing = false;
-        const btn = document.getElementById('screenshare-btn');
-        if (btn) {
-            btn.classList.remove('active');
-            btn.querySelector('span').textContent = "Screen";
-        }
-    } catch (err) {
-        console.error("stopScreenShare error", err);
-    }
-}
 
 // Camera Overlay on Video Toggle
 let isCameraOverlayMode = false;
@@ -859,142 +730,7 @@ function escapeHtml(str) {
         .replace(/'/g, '&#039;');
 }
 
-function showScreenshareChatNotice(data) {
-    if (!data || !chatMessages) return;
-    const cardId = 'screenshare-notice-' + (data.streamId || data.peerId || 'active');
-    
-    if (document.getElementById(cardId)) return;
 
-    const sender = data.senderName || 'A user';
-    const msgDiv = document.createElement('div');
-    msgDiv.className = 'screenshare-chat-card';
-    msgDiv.id = cardId;
-
-    msgDiv.innerHTML = `
-        <div class="screenshare-card-header">
-            <span class="live-badge">
-                <span class="live-pulse-dot"></span>
-                LIVE
-            </span>
-            <span><strong>${escapeHtml(sender)}</strong> started screen sharing</span>
-        </div>
-        <button class="watch-screenshare-btn">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
-                <line x1="8" y1="21" x2="16" y2="21"></line>
-                <line x1="12" y1="17" x2="12" y2="21"></line>
-            </svg>
-            <span>Watch Screenshare</span>
-        </button>
-    `;
-
-    const watchBtn = msgDiv.querySelector('.watch-screenshare-btn');
-    watchBtn.addEventListener('click', () => {
-        watchScreenshare(data.streamId, data.peerId, sender);
-    });
-
-    chatMessages.appendChild(msgDiv);
-    chatMessages.scrollTop = chatMessages.scrollHeight;
-}
-
-function removeScreenshareChatNotice(streamId) {
-    const cards = document.querySelectorAll('.screenshare-chat-card');
-    cards.forEach(card => {
-        if (!streamId || card.id.includes(streamId)) {
-            card.style.opacity = '0.7';
-            card.style.background = 'rgba(148, 163, 184, 0.1)';
-            card.style.borderColor = 'rgba(148, 163, 184, 0.2)';
-            const header = card.querySelector('.screenshare-card-header');
-            if (header) {
-                header.classList.add('muted');
-                header.innerHTML = `
-                    <span class="ended-badge">ENDED</span>
-                    <span>Screen share ended</span>
-                `;
-            }
-            const btn = card.querySelector('.watch-screenshare-btn');
-            if (btn) btn.remove();
-            
-            setTimeout(() => {
-                card.style.transition = 'all 0.4s ease';
-                card.style.opacity = '0';
-                card.style.transform = 'translateY(-10px)';
-                setTimeout(() => card.remove(), 400);
-            }, 4000);
-        }
-    });
-}
-
-function findScreenShareCard(streamId, peerId, senderName) {
-    if (streamId) {
-        let card = document.getElementById('webcam-' + streamId) ||
-                   document.querySelector(`.webcam-wrapper[data-stream-id="${streamId}"]`);
-        if (card) return card;
-    }
-    
-    let screenCard = document.querySelector('.webcam-wrapper[data-is-screen="true"]');
-    if (screenCard) return screenCard;
-
-    if (peerId) {
-        let card = document.querySelector(`.webcam-wrapper[data-peer-id="${peerId}"]`);
-        if (card) return card;
-    }
-
-    const wrappers = document.querySelectorAll('.webcam-wrapper');
-    for (let w of wrappers) {
-        const nameTag = w.querySelector('.webcam-name');
-        if (nameTag && (nameTag.textContent.includes('(Screen)') || (senderName && nameTag.textContent.includes(senderName)))) {
-            return w;
-        }
-    }
-    return null;
-}
-
-function watchScreenshare(streamId, peerId, senderName) {
-    const activateCard = (card) => {
-        if (!card) return;
-        card.style.display = 'flex';
-        card.dataset.isScreen = 'true';
-        
-        const videoEl = card.querySelector('video');
-        if (videoEl) {
-            videoEl.play().catch(err => {
-                videoEl.muted = true;
-                videoEl.play().catch(() => {});
-            });
-        }
-
-        if (!card.classList.contains('card-full-viewport')) {
-            card.classList.add('card-full-viewport');
-            if (card.requestFullscreen) {
-                card.requestFullscreen().catch(() => {});
-            }
-        }
-        
-        card.classList.add('screenshare-focus-glow');
-        setTimeout(() => card.classList.remove('screenshare-focus-glow'), 3500);
-    };
-
-    let screenCard = findScreenShareCard(streamId, peerId, senderName);
-    if (screenCard) {
-        activateCard(screenCard);
-    } else {
-        const targetPeer = peerId || (window.currentRoomId ? window.currentRoomId : null);
-        if (targetPeer && targetPeer !== peer.id) {
-            const activeStream = myStream;
-            const call = activeStream ? peer.call(targetPeer, activeStream) : peer.call(targetPeer);
-            if (call) {
-                handleCall(call, (senderName || "User") + " (Screen)", targetPeer);
-                call.on('stream', userVideoStream => {
-                    setTimeout(() => {
-                        let newCard = findScreenShareCard(userVideoStream.id, targetPeer, senderName);
-                        if (newCard) activateCard(newCard);
-                    }, 300);
-                });
-            }
-        }
-    }
-}
 
 function triggerConfetti() {
     for (let i = 0; i < 50; i++) {
