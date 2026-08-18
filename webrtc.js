@@ -237,9 +237,26 @@ function addVideoStream(video, stream, name) {
     video.srcObject = stream;
     video.autoplay = true;
     video.playsInline = true;
-    video.addEventListener('loadedmetadata', () => {
-        video.play().catch(() => {});
-    });
+    video.setAttribute('playsinline', 'true');
+    video.setAttribute('autoplay', 'true');
+    
+    const playPromise = video.play();
+    if (playPromise !== undefined) {
+        playPromise.catch(err => {
+            console.warn("Autoplay blocked for stream, attempting muted playback fallback:", err);
+            if (!isLocalStream) {
+                video.muted = true;
+                video.play().catch(() => {});
+                const unmuteOnUserClick = () => {
+                    video.muted = false;
+                    document.removeEventListener('click', unmuteOnUserClick);
+                    document.removeEventListener('keydown', unmuteOnUserClick);
+                };
+                document.addEventListener('click', unmuteOnUserClick);
+                document.addEventListener('keydown', unmuteOnUserClick);
+            }
+        });
+    }
     video.classList.add('webcam-video');
 
     // Mute strictly for local streams to prevent local audio feedback loop and echo
