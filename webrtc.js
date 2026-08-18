@@ -345,11 +345,7 @@ document.getElementById('screenshare-btn').addEventListener('click', async () =>
         try {
             const displayStream = await navigator.mediaDevices.getDisplayMedia({ 
                 video: { cursor: "always" }, 
-                audio: {
-                    echoCancellation: true,
-                    noiseSuppression: true,
-                    suppressLocalAudioPlayback: true
-                } 
+                audio: true 
             });
             const screenTrack = displayStream.getVideoTracks()[0];
             
@@ -377,12 +373,10 @@ document.getElementById('screenshare-btn').addEventListener('click', async () =>
                 }
             });
 
-            // Make sure video container shows the stream
+            // Hide local screen share preview card on presenter's DOM to eliminate infinite mirror loop!
             const myWrapper = document.getElementById('webcam-' + myStream.id);
             if (myWrapper) {
-                myWrapper.style.display = 'flex';
-                myWrapper.classList.remove('small');
-                myWrapper.classList.add('large');
+                myWrapper.style.display = 'none';
             }
 
             isScreenSharing = true;
