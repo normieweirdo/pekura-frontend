@@ -70,17 +70,21 @@ function initPlayer(videoId) {
     wrapper.innerHTML = '<div id="ytplayer"></div>';
 
     try {
+        const playerVars = {
+            'playsinline': 1,
+            'autoplay': 1,
+            'enablejsapi': 1,
+            'rel': 0
+        };
+        if (window.location.origin && window.location.origin !== 'null' && window.location.origin.startsWith('http')) {
+            playerVars.origin = window.location.origin;
+        }
+
         player = new YT.Player('ytplayer', {
             height: '100%',
             width: '100%',
             videoId: videoId,
-            playerVars: {
-                'playsinline': 1,
-                'autoplay': 1,
-                'enablejsapi': 1,
-                'origin': window.location.origin,
-                'rel': 0
-            },
+            playerVars: playerVars,
             events: {
                 'onReady': onPlayerReady,
                 'onStateChange': onPlayerStateChange
@@ -97,8 +101,13 @@ function onPlayerReady(event) {
         pendingSync = null;
     } else {
         try {
-            event.target.playVideo();
-        } catch(e) {}
+            const p = event.target.playVideo();
+            if (p && p.catch) {
+                p.catch(() => showSyncOverlay());
+            }
+        } catch(e) {
+            showSyncOverlay();
+        }
     }
 }
 
@@ -279,11 +288,29 @@ window.addEventListener('message', (event) => {
     } catch(e) {}
 });
 
-// High-precision Seek Forward & Backward Detector (polls every 250ms)
+// High-precision Seek Forward & Backward Detector (polls every 250ms with Tab Visibility Protection)
 let lastCheckedTime = 0;
 let lastCheckTimestamp = Date.now();
+let isTabHidden = false;
+
+document.addEventListener('visibilitychange', () => {
+    isTabHidden = document.hidden;
+    if (!isTabHidden) {
+        lastCheckTimestamp = Date.now();
+        if (player && typeof player.getCurrentTime === 'function') {
+            lastCheckedTime = player.getCurrentTime();
+        }
+    }
+});
 
 setInterval(() => {
+    if (document.hidden || isTabHidden) {
+        lastCheckTimestamp = Date.now();
+        if (player && typeof player.getCurrentTime === 'function') {
+            lastCheckedTime = player.getCurrentTime();
+        }
+        return;
+    }
     if (!player || typeof player.getCurrentTime !== 'function' || typeof player.getPlayerState !== 'function') return;
     if (isApplyingRemoteSync) return;
 
@@ -291,6 +318,13 @@ setInterval(() => {
     const curTime = player.getCurrentTime();
     const state = player.getPlayerState();
     const elapsedRealTime = (now - lastCheckTimestamp) / 1000;
+
+    // Protection against tab-switching & background throttling drift (> 1.5s gap)
+    if (elapsedRealTime > 1.5) {
+        lastCheckedTime = curTime;
+        lastCheckTimestamp = now;
+        return;
+    }
 
     // Expected current time if playing at 1x speed
     const expectedTime = (state === YT.PlayerState.PLAYING) ? (lastCheckedTime + elapsedRealTime) : lastCheckedTime;
