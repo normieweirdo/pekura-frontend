@@ -361,24 +361,39 @@ document.addEventListener('touchstart', unmuteAllRemoteStreams);
 document.addEventListener('keydown', unmuteAllRemoteStreams);
 
 function syncStreamToPeers() {
-    if (!myStream) return;
     announcePeer();
-    currentCalls.forEach(call => {
-        if (call && call.peerConnection) {
-            const pc = call.peerConnection;
+    
+    // Iterate through all known remote peers to ensure active stream is pushed to everyone
+    Object.keys(knownPeers).forEach(peerId => {
+        if (!peer || peerId === peer.id) return;
+
+        const existingCallIndex = currentCalls.findIndex(c => c.peer === peerId);
+        const existingCall = existingCallIndex !== -1 ? currentCalls[existingCallIndex] : null;
+
+        if (existingCall && existingCall.peerConnection) {
+            const pc = existingCall.peerConnection;
             const senders = pc.getSenders ? pc.getSenders() : [];
-            myStream.getTracks().forEach(track => {
-                const sender = senders.find(s => s.track && s.track.kind === track.kind);
-                if (sender) {
-                    sender.replaceTrack(track).catch(err => console.warn("replaceTrack error:", err));
-                } else if (pc.addTrack) {
-                    try {
-                        pc.addTrack(track, myStream);
-                    } catch(e) {
-                        console.warn("addTrack error:", e);
+            let replacedAny = false;
+
+            if (myStream) {
+                myStream.getTracks().forEach(track => {
+                    const sender = senders.find(s => s.track && s.track.kind === track.kind);
+                    if (sender) {
+                        sender.replaceTrack(track).catch(err => console.warn("replaceTrack error:", err));
+                        replacedAny = true;
                     }
-                }
-            });
+                });
+            }
+
+            // If initial call was created without a stream, re-establish call with myStream so remote peer gets our video/audio!
+            if (!replacedAny && myStream) {
+                try { existingCall.close(); } catch(e) {}
+                const newCall = peer.call(peerId, myStream);
+                if (newCall) handleCall(newCall, knownPeers[peerId] || "Guest", peerId);
+            }
+        } else if (myStream) {
+            const newCall = peer.call(peerId, myStream);
+            if (newCall) handleCall(newCall, knownPeers[peerId] || "Guest", peerId);
         }
     });
 }
@@ -429,6 +444,13 @@ socket.on('broadcast', data => {
     if (data.type === 'peer-id' || data.type === 'peer-announce') {
         if (data.peerId && peer && data.peerId !== peer.id) {
             knownPeers[data.peerId] = data.username || "Guest";
+
+            // If a webcam card for this peer already exists, update its name badge
+            const existingCard = document.querySelector(`.webcam-wrapper[data-peer-id="${data.peerId}"]`);
+            if (existingCard) {
+                const nameTag = existingCard.querySelector('.webcam-name');
+                if (nameTag && data.username) nameTag.textContent = data.username;
+            }
             
             // Deterministic calling logic: lower peerId calls higher peerId OR host calls guest
             const isTargetHost = data.isHost;
@@ -722,6 +744,9 @@ peer.on('call', call => {
     const name = knownPeers[pId] || "Guest";
     call.answer(myStream || undefined); 
     handleCall(call, name, pId);
+    if (myStream) {
+        setTimeout(() => syncStreamToPeers(), 500);
+    }
 });
 
 const joinBtn = document.getElementById('join-room-btn');
