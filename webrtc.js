@@ -185,6 +185,8 @@ function makeDraggable(el) {
 }
 
 function addVideoStream(video, stream, name, peerId = null) {
+    const isLocalStream = Boolean((myStream && stream && (stream === myStream || stream.id === myStream.id)) || (name && name.includes('(You)')));
+    
     const wrapper = document.createElement('div');
     if (peerId) wrapper.dataset.peerId = peerId;
     if (stream && stream.id) {
@@ -270,6 +272,27 @@ function addVideoStream(video, stream, name, peerId = null) {
     video.playsInline = true;
     video.setAttribute('playsinline', 'true');
     video.setAttribute('autoplay', 'true');
+    video.classList.add('webcam-video');
+
+    // Mute strictly for local streams to prevent local audio feedback loop and echo
+    if (isLocalStream) {
+        video.muted = true;
+        video.volume = 0;
+    } else {
+        video.muted = false;
+        video.volume = 1;
+
+        // Dedicated backup audio element for remote audio stream playback
+        if (stream.getAudioTracks && stream.getAudioTracks().length > 0) {
+            const remoteAudio = document.createElement('audio');
+            remoteAudio.srcObject = stream;
+            remoteAudio.autoplay = true;
+            remoteAudio.muted = false;
+            remoteAudio.volume = 1.0;
+            remoteAudio.play().catch(e => console.warn("Remote audio autoplay wait:", e));
+            wrapper.append(remoteAudio);
+        }
+    }
     
     const playPromise = video.play();
     if (playPromise !== undefined) {
@@ -278,26 +301,8 @@ function addVideoStream(video, stream, name, peerId = null) {
             if (!isLocalStream) {
                 video.muted = true;
                 video.play().catch(() => {});
-                const unmuteOnUserClick = () => {
-                    video.muted = false;
-                    document.removeEventListener('click', unmuteOnUserClick);
-                    document.removeEventListener('keydown', unmuteOnUserClick);
-                };
-                document.addEventListener('click', unmuteOnUserClick);
-                document.addEventListener('keydown', unmuteOnUserClick);
             }
         });
-    }
-    video.classList.add('webcam-video');
-
-    // Mute strictly for local streams to prevent local audio feedback loop and echo
-    const isLocalStream = Boolean(myStream && stream && (stream === myStream || stream.id === myStream.id));
-    if (isLocalStream) {
-        video.muted = true;
-        video.volume = 0;
-    } else {
-        video.muted = false;
-        video.volume = 1;
     }
 
     wrapper.append(video);
@@ -307,6 +312,30 @@ function addVideoStream(video, stream, name, peerId = null) {
     document.getElementById('webcams-container').append(wrapper);
     makeDraggable(wrapper);
 }
+
+function unmuteAllRemoteStreams() {
+    document.querySelectorAll('.webcam-wrapper').forEach(wrapper => {
+        const video = wrapper.querySelector('video');
+        const audio = wrapper.querySelector('audio');
+        const nameTag = wrapper.querySelector('.webcam-name');
+        const isLocal = nameTag && nameTag.textContent.includes('(You)');
+        if (!isLocal) {
+            if (video) {
+                video.muted = false;
+                video.volume = 1.0;
+                if (video.paused) video.play().catch(() => {});
+            }
+            if (audio) {
+                audio.muted = false;
+                audio.volume = 1.0;
+                if (audio.paused) audio.play().catch(() => {});
+            }
+        }
+    });
+}
+document.addEventListener('click', unmuteAllRemoteStreams);
+document.addEventListener('touchstart', unmuteAllRemoteStreams);
+document.addEventListener('keydown', unmuteAllRemoteStreams);
 
 function syncStreamToPeers() {
     if (!myStream) return;
