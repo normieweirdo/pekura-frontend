@@ -394,8 +394,9 @@ window.loadVideo = function(rawUrl) {
     const wrapper = document.getElementById('player-container');
     const embedSyncBar = document.getElementById('embed-sync-bar');
     
+    if (embedSyncBar) embedSyncBar.style.display = 'flex';
+
     if (platform.type === 'youtube') {
-        if (embedSyncBar) embedSyncBar.style.display = 'none';
         if (player && typeof player.destroy === 'function') {
             player.destroy();
         }
@@ -408,7 +409,6 @@ window.loadVideo = function(rawUrl) {
         wrapper.innerHTML = '';
 
         if (platform.type === 'direct') {
-            if (embedSyncBar) embedSyncBar.style.display = 'none';
             const video = document.createElement('video');
             video.src = platform.videoUrl;
             video.controls = true;
@@ -431,7 +431,6 @@ window.loadVideo = function(rawUrl) {
             wrapper.appendChild(video);
         } else {
             // Vimeo, Dailymotion, StreamHG, Proxy, Streamtape, Vidhide, Filemoon, Voe, etc.
-            if (embedSyncBar) embedSyncBar.style.display = 'flex';
             const iframe = document.createElement('iframe');
             iframe.src = platform.embedUrl;
             iframe.style.width = '100%';
@@ -445,7 +444,7 @@ window.loadVideo = function(rawUrl) {
     }
 };
 
-// StreamHG / Proxy Embed Sync Bar Button Handlers
+// StreamHG / YouTube / Universal Embed Sync Bar Button Handlers
 const embedPlayBtn = document.getElementById('embed-play-btn');
 const embedPauseBtn = document.getElementById('embed-pause-btn');
 const embedSeekBackBtn = document.getElementById('embed-seek-back-btn');
@@ -453,35 +452,101 @@ const embedSeekFwdBtn = document.getElementById('embed-seek-fwd-btn');
 
 if (embedPlayBtn) {
     embedPlayBtn.addEventListener('click', () => {
+        if (window.hostOnlyVideo && !window.isHost) {
+            alert("Host-Only Video mode is active. Only the Host can control the video.");
+            return;
+        }
         embedPlayBtn.classList.add('active');
         if (embedPauseBtn) embedPauseBtn.classList.remove('active');
+
+        let curTime = 0;
+        if (player && typeof player.playVideo === 'function') {
+            player.playVideo();
+            curTime = player.getCurrentTime ? player.getCurrentTime() : 0;
+        }
+        const video = document.querySelector('#player-container video');
+        if (video) {
+            video.play().catch(() => {});
+            curTime = video.currentTime;
+        }
         sendIframeCommand('play');
         sendIframeCommand('playVideo');
-        if (window.broadcastSync) window.broadcastSync('PLAYING', 0);
+
+        if (window.broadcastSync) window.broadcastSync('PLAYING', curTime);
     });
 }
 
 if (embedPauseBtn) {
     embedPauseBtn.addEventListener('click', () => {
+        if (window.hostOnlyVideo && !window.isHost) {
+            alert("Host-Only Video mode is active. Only the Host can control the video.");
+            return;
+        }
         embedPauseBtn.classList.add('active');
         if (embedPlayBtn) embedPlayBtn.classList.remove('active');
+
+        let curTime = 0;
+        if (player && typeof player.pauseVideo === 'function') {
+            player.pauseVideo();
+            curTime = player.getCurrentTime ? player.getCurrentTime() : 0;
+        }
+        const video = document.querySelector('#player-container video');
+        if (video) {
+            video.pause();
+            curTime = video.currentTime;
+        }
         sendIframeCommand('pause');
         sendIframeCommand('pauseVideo');
-        if (window.broadcastSync) window.broadcastSync('PAUSED', 0);
+
+        if (window.broadcastSync) window.broadcastSync('PAUSED', curTime);
     });
 }
 
 if (embedSeekBackBtn) {
     embedSeekBackBtn.addEventListener('click', () => {
+        if (window.hostOnlyVideo && !window.isHost) {
+            alert("Host-Only Video mode is active. Only the Host can control the video.");
+            return;
+        }
+        let curTime = 0;
+        if (player && typeof player.seekTo === 'function') {
+            curTime = Math.max(0, (player.getCurrentTime ? player.getCurrentTime() : 0) - 10);
+            player.seekTo(curTime, true);
+        }
+        const video = document.querySelector('#player-container video');
+        if (video) {
+            curTime = Math.max(0, video.currentTime - 10);
+            video.currentTime = curTime;
+        }
         sendIframeCommand('seekBy', -10);
-        if (window.broadcastSync) window.broadcastSync('SEEK_BACK', -10);
+
+        const isPlaying = (player && typeof player.getPlayerState === 'function') ? (player.getPlayerState() === 1) : false;
+        const stateStr = isPlaying ? 'PLAYING' : 'PAUSED';
+        if (window.broadcastSync) window.broadcastSync(stateStr, curTime);
     });
 }
 
 if (embedSeekFwdBtn) {
     embedSeekFwdBtn.addEventListener('click', () => {
+        if (window.hostOnlyVideo && !window.isHost) {
+            alert("Host-Only Video mode is active. Only the Host can control the video.");
+            return;
+        }
+        let curTime = 0;
+        if (player && typeof player.seekTo === 'function') {
+            curTime = (player.getCurrentTime ? player.getCurrentTime() : 0) + 10;
+            player.seekTo(curTime, true);
+        }
+        const video = document.querySelector('#player-container video');
+        if (video) {
+            curTime = video.currentTime + 10;
+            video.currentTime = curTime;
+        }
         sendIframeCommand('seekBy', 10);
-        if (window.broadcastSync) window.broadcastSync('SEEK_FWD', 10);
+
+        const isPlaying = (player && typeof player.getPlayerState === 'function') ? (player.getPlayerState() === 1) : false;
+        const stateStr = isPlaying ? 'PLAYING' : 'PAUSED';
+        if (window.broadcastSync) window.broadcastSync(stateStr, curTime);
     });
 }
 

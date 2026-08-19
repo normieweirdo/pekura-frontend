@@ -620,11 +620,23 @@ document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
 
 // Broadcast Video Sync State (used by script.js)
 window.broadcastSync = function(state, time) {
+    if (window.hostOnlyVideo && !isHost) {
+        console.warn("Host-Only Video mode is active. Guest controls ignored.");
+        return;
+    }
     socket.emit('broadcast', { 
         type: 'video-state-sync', 
         state: state, 
         time: time 
     });
+};
+
+window.broadcastVideoSync = function(url) {
+    if (window.hostOnlyVideo && !isHost) {
+        alert("Host-Only Video mode is enabled. Only the Host can change the video.");
+        return;
+    }
+    socket.emit('broadcast', { type: 'video-sync', url });
 };
 
 window.requestSync = function() {
