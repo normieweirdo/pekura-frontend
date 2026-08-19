@@ -365,6 +365,20 @@ body {
     box-shadow: 0 20px 45px rgba(0, 0, 0, 0.6);
     position: relative;
     border: 1px solid var(--pill-border);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.video-container.minimized-player {
+    position: fixed !important;
+    bottom: 24px !important;
+    left: 24px !important;
+    width: 320px !important;
+    height: 180px !important;
+    max-width: none !important;
+    z-index: 99990 !important;
+    box-shadow: 0 20px 45px rgba(0, 0, 0, 0.9);
+    border: 2px solid #8b5cf6 !important;
+    border-radius: 16px !important;
 }
 
 #player-container {

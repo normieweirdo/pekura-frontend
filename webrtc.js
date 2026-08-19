@@ -478,6 +478,22 @@ if (toggleOverlayBtn) {
     });
 }
 
+// Minimize Video Player Toggle
+const minimizeVideoBtn = document.getElementById('minimize-video-btn');
+if (minimizeVideoBtn) {
+    minimizeVideoBtn.addEventListener('click', () => {
+        const videoWrapper = document.getElementById('video-wrapper');
+        if (videoWrapper) {
+            const isMinimized = videoWrapper.classList.toggle('minimized-player');
+            minimizeVideoBtn.classList.toggle('active', isMinimized);
+            const btnSpan = minimizeVideoBtn.querySelector('span');
+            if (btnSpan) {
+                btnSpan.textContent = isMinimized ? "Restore Video" : "Minimize Video";
+            }
+        }
+    });
+}
+
 // Fullscreen Mode with Overlaid Webcams Support
 const fullscreenBtn = document.getElementById('fullscreen-btn');
 const exitFullscreenBtn = document.getElementById('exit-fullscreen-btn');
