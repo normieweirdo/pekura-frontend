@@ -43,13 +43,37 @@ const peerOptions = {
     }
 };
 
-const peer = isHost 
+let knownPeers = {}; // maps peerId -> username
+
+let peer = isHost 
     ? new Peer(currentRoomId, peerOptions) 
     : new Peer(peerOptions);
 
 peer.on('error', (err) => {
     console.error("PeerJS Error:", err);
+    if (err.type === 'unavailable-id' && isHost) {
+        console.warn("Host peer ID unavailable, falling back to dynamic peer ID");
+        peer = new Peer(peerOptions);
+        peer.on('open', (id) => announcePeer());
+    }
 });
+
+peer.on('open', (id) => {
+    console.log("PeerJS open with ID:", id);
+    announcePeer();
+});
+
+function announcePeer() {
+    if (peer && peer.id && socket && socket.connected) {
+        const username = document.getElementById('profile-name') ? document.getElementById('profile-name').value.trim() || 'Guest' : 'Guest';
+        socket.emit('broadcast', {
+            type: 'peer-announce',
+            peerId: peer.id,
+            isHost: isHost,
+            username: username
+        });
+    }
+}
 
 let myStream = null;
 let currentCalls = [];
@@ -102,6 +126,7 @@ socket.on('connect', () => {
             res.chatHistory.forEach(msg => appendStructuredMessage(msg, 'peer'));
         }
         window.hostOnlyVideo = res.hostOnlyVideo;
+        announcePeer();
     });
 });
 
@@ -266,13 +291,13 @@ function addVideoStream(video, stream, name, peerId = null) {
     video.classList.add('webcam-video');
 
     // Mute strictly for local streams to prevent local audio feedback loop and echo
-    const myName = document.getElementById('profile-name').value;
-    const isLocalStream = name === myName || name.startsWith(myName) || (myStream && stream && stream.id === myStream.id);
+    const isLocalStream = Boolean(myStream && stream && (stream === myStream || stream.id === myStream.id));
     if (isLocalStream) {
         video.muted = true;
         video.volume = 0;
     } else {
         video.muted = false;
+        video.volume = 1;
     }
 
     wrapper.append(video);
@@ -281,6 +306,29 @@ function addVideoStream(video, stream, name, peerId = null) {
     wrapper.append(closeBtn);
     document.getElementById('webcams-container').append(wrapper);
     makeDraggable(wrapper);
+}
+
+function syncStreamToPeers() {
+    if (!myStream) return;
+    announcePeer();
+    currentCalls.forEach(call => {
+        if (call && call.peerConnection) {
+            const pc = call.peerConnection;
+            const senders = pc.getSenders ? pc.getSenders() : [];
+            myStream.getTracks().forEach(track => {
+                const sender = senders.find(s => s.track && s.track.kind === track.kind);
+                if (sender) {
+                    sender.replaceTrack(track).catch(err => console.warn("replaceTrack error:", err));
+                } else if (pc.addTrack) {
+                    try {
+                        pc.addTrack(track, myStream);
+                    } catch(e) {
+                        console.warn("addTrack error:", e);
+                    }
+                }
+            });
+        }
+    });
 }
 
 async function requestMedia() {
@@ -295,22 +343,24 @@ async function requestMedia() {
             } 
         });
         
+        // Sync track enabled states with UI control state
+        if (myStream.getVideoTracks().length > 0) {
+            myStream.getVideoTracks()[0].enabled = videoEnabled;
+        }
+        if (myStream.getAudioTracks().length > 0) {
+            myStream.getAudioTracks()[0].enabled = audioEnabled;
+        }
+
         const myWrapper = myStream ? document.getElementById('webcam-' + myStream.id) : null;
         if (myWrapper) {
             myWrapper.style.display = 'flex';
         } else {
             const myVideo = document.createElement('video');
-            addVideoStream(myVideo, myStream, document.getElementById('profile-name').value);
+            const myName = document.getElementById('profile-name') ? document.getElementById('profile-name').value.trim() || 'Guest' : 'Guest';
+            addVideoStream(myVideo, myStream, myName + " (You)", peer ? peer.id : null);
         }
 
-        if (!isHost) {
-            const call = peer.call(currentRoomId, myStream);
-            handleCall(call, "Host");
-        }
-        
-        if (peer && peer.id) {
-            socket.emit('broadcast', { type: 'peer-id', peerId: peer.id, isHost: isHost });
-        }
+        syncStreamToPeers();
         return myStream;
     } catch (err) {
         console.error('Failed to get local stream', err);
@@ -318,13 +368,22 @@ async function requestMedia() {
     }
 }
 
-// Socket listener for dynamic webcams
+// Socket listener for dynamic webcams & peer announcements
 socket.on('broadcast', data => {
-    if (data.type === 'peer-id') {
-        if (isHost && !data.isHost && data.peerId !== peer.id) {
-            const activeStream = myStream;
-            const call = activeStream ? peer.call(data.peerId, activeStream) : peer.call(data.peerId);
-            if (call) handleCall(call, "Guest");
+    if (data.type === 'peer-id' || data.type === 'peer-announce') {
+        if (data.peerId && peer && data.peerId !== peer.id) {
+            knownPeers[data.peerId] = data.username || "Guest";
+            
+            // Deterministic calling logic: lower peerId calls higher peerId OR host calls guest
+            const isTargetHost = data.isHost;
+            const shouldInitiate = (!isHost && isTargetHost) || (isHost && !data.isHost) || (peer.id < data.peerId);
+            const existingCall = currentCalls.find(c => c.peer === data.peerId && c.open);
+            
+            if (!existingCall && shouldInitiate) {
+                const activeStream = myStream;
+                const call = activeStream ? peer.call(data.peerId, activeStream) : peer.call(data.peerId);
+                if (call) handleCall(call, knownPeers[data.peerId] || "Guest", data.peerId);
+            }
         }
     }
 });
@@ -334,34 +393,36 @@ let videoEnabled = false;
 let audioEnabled = false;
 
 document.getElementById('toggle-camera-btn').addEventListener('click', async (e) => {
-    if (!myStream) await requestMedia();
-    if (myStream) {
-        videoEnabled = !videoEnabled;
-        if (myStream.getVideoTracks().length > 0) {
-            myStream.getVideoTracks()[0].enabled = videoEnabled;
-        }
-        const btn = document.getElementById('toggle-camera-btn');
-        btn.querySelector('span').textContent = videoEnabled ? "Disable Camera" : "Camera";
-        btn.classList.toggle('active', videoEnabled);
-        
-        const webcamsContainer = document.getElementById('webcams-container');
-        const videoWrapper = document.getElementById('video-wrapper');
-        
-        if (videoEnabled && videoWrapper && webcamsContainer.parentNode !== videoWrapper) {
-            videoWrapper.appendChild(webcamsContainer);
-            webcamsContainer.classList.add('overlay-mode');
-        }
-        
-        const myWrapper = document.getElementById('webcam-' + myStream.id);
-        if (myWrapper) {
-            myWrapper.style.display = videoEnabled ? 'flex' : 'none';
-            if (videoEnabled) {
-                myWrapper.style.top = '15px';
-                myWrapper.style.right = '15px';
-                myWrapper.style.left = 'auto';
-            }
+    videoEnabled = !videoEnabled;
+    if (!myStream) {
+        await requestMedia();
+    } else if (myStream.getVideoTracks().length > 0) {
+        myStream.getVideoTracks()[0].enabled = videoEnabled;
+    }
+    
+    const btn = document.getElementById('toggle-camera-btn');
+    btn.querySelector('span').textContent = videoEnabled ? "Disable Camera" : "Camera";
+    btn.classList.toggle('active', videoEnabled);
+    
+    const webcamsContainer = document.getElementById('webcams-container');
+    const videoWrapper = document.getElementById('video-wrapper');
+    
+    if (videoEnabled && videoWrapper && webcamsContainer.parentNode !== videoWrapper) {
+        videoWrapper.appendChild(webcamsContainer);
+        webcamsContainer.classList.add('overlay-mode');
+    }
+    
+    const myWrapper = myStream ? document.getElementById('webcam-' + myStream.id) : null;
+    if (myWrapper) {
+        myWrapper.style.display = videoEnabled ? 'flex' : 'none';
+        if (videoEnabled) {
+            myWrapper.style.top = '15px';
+            myWrapper.style.right = '15px';
+            myWrapper.style.left = 'auto';
         }
     }
+
+    syncStreamToPeers();
 });
 
 // Camera Overlay on Video Toggle
@@ -500,29 +561,45 @@ window.requestSync = function() {
 };
 
 document.getElementById('toggle-mic-btn').addEventListener('click', async (e) => {
-    if (!myStream) await requestMedia();
-    if (myStream) {
-        audioEnabled = !audioEnabled;
+    audioEnabled = !audioEnabled;
+    if (!myStream) {
+        await requestMedia();
+    } else if (myStream.getAudioTracks().length > 0) {
         myStream.getAudioTracks()[0].enabled = audioEnabled;
-        const btn = document.getElementById('toggle-mic-btn');
-        btn.querySelector('span').textContent = audioEnabled ? "Disable Mic" : "Enable Mic";
-        btn.classList.toggle('active', audioEnabled);
     }
+    const btn = document.getElementById('toggle-mic-btn');
+    btn.querySelector('span').textContent = audioEnabled ? "Disable Mic" : "Mic";
+    btn.classList.toggle('active', audioEnabled);
+
+    syncStreamToPeers();
 });
 
 function handleCall(call, defaultName = "Guest", peerId = null) {
-    currentCalls.push(call);
-    const video = document.createElement('video');
     const pId = peerId || (call ? call.peer : null);
+    const existingIndex = currentCalls.findIndex(c => c.peer === pId);
+    if (existingIndex !== -1) {
+        currentCalls[existingIndex] = call;
+    } else {
+        currentCalls.push(call);
+    }
+
+    const name = (pId && knownPeers[pId]) ? knownPeers[pId] : defaultName;
+    const video = document.createElement('video');
     
-    // Add error listener on the connection
     call.on('error', err => {
-        console.error("WebRTC Call Error (" + defaultName + "):", err);
+        console.error("WebRTC Call Error (" + name + "):", err);
     });
 
     call.on('stream', userVideoStream => {
-        if (!document.getElementById('webcam-' + userVideoStream.id)) {
-            addVideoStream(video, userVideoStream, defaultName, pId);
+        const existing = (pId ? document.querySelector(`.webcam-wrapper[data-peer-id="${pId}"]`) : null) || document.getElementById('webcam-' + userVideoStream.id);
+        if (!existing) {
+            addVideoStream(video, userVideoStream, name, pId);
+        } else {
+            const v = existing.querySelector('video');
+            if (v && v.srcObject !== userVideoStream) {
+                v.srcObject = userVideoStream;
+                v.play().catch(() => {});
+            }
         }
     });
 
@@ -530,13 +607,25 @@ function handleCall(call, defaultName = "Guest", peerId = null) {
         call.peerConnection.ontrack = (event) => {
             if (event.streams && event.streams[0]) {
                 const st = event.streams[0];
-                if (!document.getElementById('webcam-' + st.id)) {
+                const existing = (pId ? document.querySelector(`.webcam-wrapper[data-peer-id="${pId}"]`) : null) || document.getElementById('webcam-' + st.id);
+                if (!existing) {
                     const v = document.createElement('video');
-                    addVideoStream(v, st, defaultName, pId);
+                    addVideoStream(v, st, name, pId);
+                } else {
+                    const v = existing.querySelector('video');
+                    if (v && v.srcObject !== st) {
+                        v.srcObject = st;
+                        v.play().catch(() => {});
+                    }
                 }
             }
         };
     }
+
+    call.on('close', () => {
+        const webcam = pId ? document.querySelector(`.webcam-wrapper[data-peer-id="${pId}"]`) : null;
+        if (webcam) webcam.remove();
+    });
 }
 
 // Peer connection handling
@@ -547,8 +636,10 @@ peer.on('connection', conn => {
 });
 
 peer.on('call', call => {
-    call.answer(currentScreenStream || myStream || undefined); 
-    handleCall(call, "Guest");
+    const pId = call.peer;
+    const name = knownPeers[pId] || "Guest";
+    call.answer(myStream || undefined); 
+    handleCall(call, name, pId);
 });
 
 const joinBtn = document.getElementById('join-room-btn');
