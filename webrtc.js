@@ -154,18 +154,28 @@ function updateUserCount(count) {
     document.getElementById('user-count').textContent = `Users: ${userCount}`;
 }
 
-// Setup Dragging for webcams
+// Setup Dragging for webcams over the entire website
 function makeDraggable(el) {
     let isDrag = false;
     let startX, startY, initialX, initialY;
 
     el.addEventListener('mousedown', (e) => {
-        if (e.target.tagName.toLowerCase() === 'video') return;
+        if (e.target.closest('.webcam-close-btn') || e.target.closest('.webcam-fullscreen-btn')) return;
         isDrag = true;
+        el.style.cursor = 'grabbing';
         startX = e.clientX;
         startY = e.clientY;
-        initialX = el.offsetLeft;
-        initialY = el.offsetTop;
+        
+        const rect = el.getBoundingClientRect();
+        initialX = rect.left;
+        initialY = rect.top;
+        
+        el.style.position = 'fixed';
+        el.style.left = initialX + 'px';
+        el.style.top = initialY + 'px';
+        el.style.right = 'auto';
+        el.style.bottom = 'auto';
+        el.style.zIndex = '9999999';
         e.preventDefault();
     });
 
@@ -173,14 +183,19 @@ function makeDraggable(el) {
         if (!isDrag) return;
         const dx = e.clientX - startX;
         const dy = e.clientY - startY;
-        el.style.left = (initialX + dx) + 'px';
-        el.style.top = (initialY + dy) + 'px';
-        el.style.right = 'auto';
-        el.style.bottom = 'auto';
+        
+        const newLeft = Math.max(0, Math.min(window.innerWidth - el.offsetWidth, initialX + dx));
+        const newTop = Math.max(0, Math.min(window.innerHeight - el.offsetHeight, initialY + dy));
+        
+        el.style.left = newLeft + 'px';
+        el.style.top = newTop + 'px';
     });
 
     document.addEventListener('mouseup', () => {
-        isDrag = false;
+        if (isDrag) {
+            isDrag = false;
+            el.style.cursor = 'grab';
+        }
     });
 }
 
@@ -364,7 +379,11 @@ async function requestMedia() {
     if (myStream) return myStream;
     try {
         myStream = await navigator.mediaDevices.getUserMedia({ 
-            video: true, 
+            video: {
+                width: { ideal: 640, max: 1280 },
+                height: { ideal: 480, max: 720 },
+                frameRate: { ideal: 30, max: 30 }
+            }, 
             audio: {
                 echoCancellation: true,
                 noiseSuppression: true,
@@ -445,8 +464,8 @@ document.getElementById('toggle-camera-btn').addEventListener('click', async (e)
     if (myWrapper) {
         myWrapper.style.display = videoEnabled ? 'flex' : 'none';
         if (videoEnabled) {
-            myWrapper.style.top = '15px';
-            myWrapper.style.right = '15px';
+            myWrapper.style.top = '80px';
+            myWrapper.style.right = '20px';
             myWrapper.style.left = 'auto';
         }
     }
@@ -464,20 +483,16 @@ if (toggleOverlayBtn) {
         toggleOverlayBtn.classList.toggle('active', isCameraOverlayMode);
         
         const webcamsContainer = document.getElementById('webcams-container');
-        const videoWrapper = document.getElementById('video-wrapper');
+        const wrappers = webcamsContainer.querySelectorAll('.webcam-wrapper');
         
         if (isCameraOverlayMode) {
-            videoWrapper.appendChild(webcamsContainer);
             webcamsContainer.classList.add('overlay-mode');
-            
-            const wrappers = webcamsContainer.querySelectorAll('.webcam-wrapper');
             wrappers.forEach((w, idx) => {
-                w.style.top = (15 + (idx * 20)) + 'px';
-                w.style.right = '15px';
+                w.style.top = (80 + (idx * 25)) + 'px';
+                w.style.right = '20px';
                 w.style.left = 'auto';
             });
         } else {
-            document.body.appendChild(webcamsContainer);
             webcamsContainer.classList.remove('overlay-mode');
         }
     });
