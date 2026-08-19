@@ -297,6 +297,14 @@ function addVideoStream(video, stream, name, peerId = null) {
     video.setAttribute('autoplay', 'true');
     video.classList.add('webcam-video');
     
+    if (stream && stream.getTracks) {
+        stream.getTracks().forEach(track => {
+            track.onunmute = () => {
+                if (video && video.paused) video.play().catch(() => {});
+            };
+        });
+    }
+
     const playPromise = video.play();
     if (playPromise !== undefined) {
         playPromise.catch(err => {
@@ -443,14 +451,6 @@ document.getElementById('toggle-camera-btn').addEventListener('click', async (e)
     btn.querySelector('span').textContent = videoEnabled ? "Disable Camera" : "Camera";
     btn.classList.toggle('active', videoEnabled);
     
-    const webcamsContainer = document.getElementById('webcams-container');
-    const videoWrapper = document.getElementById('video-wrapper');
-    
-    if (videoEnabled && videoWrapper && webcamsContainer.parentNode !== videoWrapper) {
-        videoWrapper.appendChild(webcamsContainer);
-        webcamsContainer.classList.add('overlay-mode');
-    }
-    
     const myWrapper = myStream ? document.getElementById('webcam-' + myStream.id) : null;
     if (myWrapper) {
         myWrapper.style.display = videoEnabled ? 'flex' : 'none';
@@ -531,16 +531,11 @@ const exitFullscreenBtn = document.getElementById('exit-fullscreen-btn');
 
 function enterFullViewport() {
     const videoWrapper = document.getElementById('video-wrapper');
-    const webcamsContainer = document.getElementById('webcams-container');
-    
     videoWrapper.classList.add('full-viewport');
-    videoWrapper.appendChild(webcamsContainer);
-    webcamsContainer.classList.add('overlay-mode');
     
     if (exitFullscreenBtn) exitFullscreenBtn.style.display = 'flex';
     if (fullscreenBtn) fullscreenBtn.classList.add('active');
 
-    // Also attempt browser Fullscreen API
     if (!document.fullscreenElement && !document.webkitFullscreenElement) {
         if (videoWrapper.requestFullscreen) {
             videoWrapper.requestFullscreen().catch(() => {});
@@ -548,19 +543,10 @@ function enterFullViewport() {
             videoWrapper.webkitRequestFullscreen().catch(() => {});
         }
     }
-
-    const wrappers = webcamsContainer.querySelectorAll('.webcam-wrapper');
-    wrappers.forEach((w, idx) => {
-        w.style.top = (25 + (idx * 25)) + 'px';
-        w.style.right = '25px';
-        w.style.left = 'auto';
-    });
 }
 
 function exitFullViewport() {
     const videoWrapper = document.getElementById('video-wrapper');
-    const webcamsContainer = document.getElementById('webcams-container');
-    
     videoWrapper.classList.remove('full-viewport');
     if (exitFullscreenBtn) exitFullscreenBtn.style.display = 'none';
     if (fullscreenBtn) fullscreenBtn.classList.remove('active');
@@ -571,13 +557,6 @@ function exitFullViewport() {
         } else if (document.webkitExitFullscreen) {
             document.webkitExitFullscreen().catch(() => {});
         }
-    }
-
-    if (!isCameraOverlayMode) {
-        document.body.appendChild(webcamsContainer);
-        webcamsContainer.classList.remove('overlay-mode');
-    } else {
-        videoWrapper.appendChild(webcamsContainer);
     }
 }
 
@@ -701,6 +680,17 @@ function handleCall(call, defaultName = "Guest", peerId = null) {
                         v.play().catch(() => {});
                     }
                 }
+            }
+        };
+
+        call.peerConnection.oniceconnectionstatechange = () => {
+            const iceState = call.peerConnection.iceConnectionState;
+            console.log(`ICE connection state (${name}):`, iceState);
+            if (iceState === 'disconnected' || iceState === 'failed') {
+                console.warn(`Peer ICE ${iceState}, auto-reconnecting stream...`);
+                setTimeout(() => {
+                    if (announcePeer) announcePeer();
+                }, 1200);
             }
         };
     }
