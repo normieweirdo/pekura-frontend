@@ -160,7 +160,7 @@ function makeDraggable(el) {
     let startX, startY, initialX, initialY;
 
     el.addEventListener('mousedown', (e) => {
-        if (e.target.closest('.webcam-close-btn') || e.target.closest('.webcam-fullscreen-btn')) return;
+        if (e.target.closest('.webcam-close-btn') || e.target.closest('.webcam-fullscreen-btn') || e.target.closest('.webcam-minimize-btn')) return;
         isDrag = true;
         el.style.cursor = 'grabbing';
         startX = e.clientX;
@@ -308,8 +308,19 @@ function addVideoStream(video, stream, name, peerId = null) {
         });
     }
 
+    const minimizeBtn = document.createElement('button');
+    minimizeBtn.classList.add('webcam-minimize-btn');
+    minimizeBtn.innerHTML = `&minus;`;
+    minimizeBtn.title = 'Minimize / Expand webcam box';
+    minimizeBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const isMin = wrapper.classList.toggle('minimized-webcam');
+        minimizeBtn.innerHTML = isMin ? `&#43;` : `&minus;`;
+    });
+
     wrapper.append(video);
     wrapper.append(nameTag);
+    wrapper.append(minimizeBtn);
     wrapper.append(fullscreenBtn);
     wrapper.append(closeBtn);
     document.getElementById('webcams-container').append(wrapper);
@@ -474,6 +485,26 @@ if (toggleOverlayBtn) {
             });
         } else {
             webcamsContainer.classList.remove('overlay-mode');
+        }
+    });
+}
+
+// Toggle All Webcams Minimized
+const toggleWebcamsMinBtn = document.getElementById('toggle-webcams-min-btn');
+if (toggleWebcamsMinBtn) {
+    toggleWebcamsMinBtn.addEventListener('click', () => {
+        const wrappers = document.querySelectorAll('.webcam-wrapper');
+        if (wrappers.length === 0) return;
+        const anyExpanded = Array.from(wrappers).some(w => !w.classList.contains('minimized-webcam'));
+        wrappers.forEach(w => {
+            w.classList.toggle('minimized-webcam', anyExpanded);
+            const btn = w.querySelector('.webcam-minimize-btn');
+            if (btn) btn.innerHTML = anyExpanded ? `&#43;` : `&minus;`;
+        });
+        toggleWebcamsMinBtn.classList.toggle('active', anyExpanded);
+        const btnSpan = toggleWebcamsMinBtn.querySelector('span');
+        if (btnSpan) {
+            btnSpan.textContent = anyExpanded ? "Expand Cameras" : "Minimize Cameras";
         }
     });
 }

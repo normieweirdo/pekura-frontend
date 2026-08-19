@@ -792,6 +792,51 @@ body {
 .webcam-fullscreen-btn { position: absolute; top: 6px; right: 34px; width: 22px; height: 22px; background: rgba(0, 0, 0, 0.7); color: white; border: none; border-radius: 50%; font-size: 12px; cursor: pointer; z-index: 10; display: flex; align-items: center; justify-content: center; transition: background 0.2s, transform 0.2s; }
 .webcam-fullscreen-btn:hover { background: #6366f1; transform: scale(1.15); }
 
+.webcam-minimize-btn { position: absolute; top: 6px; right: 62px; width: 22px; height: 22px; background: rgba(0, 0, 0, 0.7); color: white; border: none; border-radius: 50%; font-size: 14px; cursor: pointer; z-index: 10; display: flex; align-items: center; justify-content: center; transition: background 0.2s, transform 0.2s; }
+.webcam-minimize-btn:hover { background: #3b82f6; transform: scale(1.15); }
+
+/* Minimized Webcam Pill Style */
+.webcam-wrapper.minimized-webcam {
+    width: auto !important;
+    min-width: 130px !important;
+    max-width: 220px !important;
+    height: 38px !important;
+    aspect-ratio: auto !important;
+    border-radius: 9999px !important;
+    padding: 4px 12px 4px 14px !important;
+    background: rgba(15, 12, 34, 0.92) !important;
+    border: 1.5px solid #8b5cf6 !important;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.8) !important;
+    align-items: center !important;
+    gap: 8px !important;
+    overflow: hidden !important;
+}
+
+.webcam-wrapper.minimized-webcam video {
+    display: none !important;
+}
+
+.webcam-wrapper.minimized-webcam .webcam-name {
+    position: static !important;
+    background: transparent !important;
+    padding: 0 !important;
+    font-size: 0.82rem !important;
+    font-weight: 700 !important;
+    color: #e2e8f0 !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+}
+
+.webcam-wrapper.minimized-webcam .webcam-fullscreen-btn {
+    display: none !important;
+}
+
+.webcam-wrapper.minimized-webcam .webcam-minimize-btn,
+.webcam-wrapper.minimized-webcam .webcam-close-btn {
+    position: static !important;
+}
+
 .webcam-wrapper.card-full-viewport {
     position: fixed !important;
     top: 0 !important;
