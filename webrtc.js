@@ -281,33 +281,21 @@ function addVideoStream(video, stream, name, peerId = null) {
         wrapper.id = 'webcam-' + stream.id;
     }
 
-    wrapper.style.display = 'flex';
+    // Mute strictly for local streams BEFORE assigning srcObject to prevent acoustic feedback loop and echo
+    if (isLocalStream) {
+        video.muted = true;
+        video.volume = 0;
+    } else {
+        video.muted = false;
+        video.volume = 1.0;
+    }
+
     video.srcObject = stream;
     video.autoplay = true;
     video.playsInline = true;
     video.setAttribute('playsinline', 'true');
     video.setAttribute('autoplay', 'true');
     video.classList.add('webcam-video');
-
-    // Mute strictly for local streams to prevent local audio feedback loop and echo
-    if (isLocalStream) {
-        video.muted = true;
-        video.volume = 0;
-    } else {
-        video.muted = false;
-        video.volume = 1;
-
-        // Dedicated backup audio element for remote audio stream playback
-        if (stream.getAudioTracks && stream.getAudioTracks().length > 0) {
-            const remoteAudio = document.createElement('audio');
-            remoteAudio.srcObject = stream;
-            remoteAudio.autoplay = true;
-            remoteAudio.muted = false;
-            remoteAudio.volume = 1.0;
-            remoteAudio.play().catch(e => console.warn("Remote audio autoplay wait:", e));
-            wrapper.append(remoteAudio);
-        }
-    }
     
     const playPromise = video.play();
     if (playPromise !== undefined) {
@@ -331,20 +319,12 @@ function addVideoStream(video, stream, name, peerId = null) {
 function unmuteAllRemoteStreams() {
     document.querySelectorAll('.webcam-wrapper').forEach(wrapper => {
         const video = wrapper.querySelector('video');
-        const audio = wrapper.querySelector('audio');
         const nameTag = wrapper.querySelector('.webcam-name');
         const isLocal = nameTag && nameTag.textContent.includes('(You)');
-        if (!isLocal) {
-            if (video) {
-                video.muted = false;
-                video.volume = 1.0;
-                if (video.paused) video.play().catch(() => {});
-            }
-            if (audio) {
-                audio.muted = false;
-                audio.volume = 1.0;
-                if (audio.paused) audio.play().catch(() => {});
-            }
+        if (!isLocal && video) {
+            video.muted = false;
+            video.volume = 1.0;
+            if (video.paused) video.play().catch(() => {});
         }
     });
 }
