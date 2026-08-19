@@ -24,6 +24,10 @@ const peerOptions = {
         'iceServers': [
             { urls: 'stun:stun.l.google.com:19302' },
             { urls: 'stun:stun1.l.google.com:19302' },
+            { urls: 'stun:stun2.l.google.com:19302' },
+            { urls: 'stun:stun3.l.google.com:19302' },
+            { urls: 'stun:stun4.l.google.com:19302' },
+            { urls: 'stun:global.stun.twilio.com:3478' },
             {
                 urls: 'turn:openrelay.metered.ca:80',
                 username: 'openrelayproject',
@@ -39,7 +43,8 @@ const peerOptions = {
                 username: 'openrelayproject',
                 credential: 'openrelayproject'
             }
-        ]
+        ],
+        'iceCandidatePoolSize': 10
     }
 };
 
@@ -63,9 +68,13 @@ peer.on('open', (id) => {
     announcePeer();
 });
 
+function getSavedUsername() {
+    return localStorage.getItem('pekura_username') || (document.getElementById('profile-name') ? document.getElementById('profile-name').value.trim() : '') || 'Guest';
+}
+
 function announcePeer() {
     if (peer && peer.id && socket && socket.connected) {
-        const username = document.getElementById('profile-name') ? document.getElementById('profile-name').value.trim() || 'Guest' : 'Guest';
+        const username = getSavedUsername();
         socket.emit('broadcast', {
             type: 'peer-announce',
             peerId: peer.id,
@@ -88,7 +97,7 @@ window.onerror = function(msg, url, lineNo, columnNo, error) {
 
 socket.on('connect', () => {
     document.getElementById('room-status').textContent = "Socket connected. Joining room...";
-    const username = document.getElementById('profile-name') ? document.getElementById('profile-name').value.trim() || 'Guest' : 'Guest';
+    const username = getSavedUsername();
     socket.emit('join_room', { roomId: currentRoomId, isHost: isHost, username: username }, (res) => {
         if (!res.success) {
             alert(res.error);
@@ -740,6 +749,33 @@ if (joinBtn) {
 const chatMessages = document.getElementById('chat-messages');
 const chatInput = document.getElementById('chat-input');
 const profileName = document.getElementById('profile-name');
+
+if (profileName) {
+    const saved = localStorage.getItem('pekura_username');
+    if (saved) profileName.value = saved;
+
+    const handleNameChange = () => {
+        const newName = profileName.value.trim() || 'Guest';
+        localStorage.setItem('pekura_username', newName);
+
+        const myWrapper = myStream ? document.getElementById('webcam-' + myStream.id) : null;
+        if (myWrapper) {
+            const nameTag = myWrapper.querySelector('.webcam-name');
+            if (nameTag) nameTag.textContent = newName + " (You)";
+        }
+
+        if (socket && socket.connected) {
+            socket.emit('broadcast', {
+                type: 'name-change',
+                newName: newName,
+                peerId: peer ? peer.id : null
+            });
+        }
+    };
+
+    profileName.addEventListener('change', handleNameChange);
+    profileName.addEventListener('input', handleNameChange);
+}
 
 // Audio setup for synthesized sounds
 const AudioContext = window.AudioContext || window.webkitAudioContext;
